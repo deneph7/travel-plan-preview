@@ -117,6 +117,7 @@
       margin-left: 8px;
       white-space: nowrap;
       min-width: 60px;
+      overflow: hidden; text-overflow: ellipsis;
     }
 
     /* ===== NAV ARROWS (desktop) ===== */
@@ -184,6 +185,7 @@
       background: rgba(255,255,255,0.08);
       color: var(--text-secondary);
       backdrop-filter: blur(4px);
+      max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
     }
 
     /* ===== SECTION ===== */
@@ -211,7 +213,7 @@
     }
     .info-card:hover { background: var(--surface-hover); }
     .info-card .label { font-size: 11px; color: var(--text-tertiary); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
-    .info-card .value { font-size: 14px; font-weight: 600; color: var(--text); line-height: 1.4; }
+    .info-card .value { font-size: 14px; font-weight: 600; color: var(--text); line-height: 1.4; overflow-wrap: break-word; word-break: break-word; }
 
     /* ===== FILTER TABS ===== */
     .filter-tabs {
@@ -260,7 +262,7 @@
       font-size: 20px; flex-shrink: 0;
     }
     .spot-info { flex: 1; min-width: 0; }
-    .spot-name { font-size: 14px; font-weight: 600; color: var(--text); line-height: 1.3; margin-bottom: 2px; }
+    .spot-name { font-size: 14px; font-weight: 600; color: var(--text); line-height: 1.3; margin-bottom: 2px; overflow-wrap: break-word; word-break: break-word; }
     .spot-name-en { font-size: 11.5px; color: var(--text-tertiary); margin-bottom: 6px; }
     .spot-tags { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     .spot-type {
@@ -281,7 +283,7 @@
       border-top: 1px solid var(--border);
       font-size: 12.5px; color: var(--text-secondary); line-height: 1.7;
     }
-    .spot-detail-row { display: flex; gap: 6px; margin-bottom: 4px; }
+    .spot-detail-row { display: flex; gap: 6px; margin-bottom: 4px; overflow-wrap: break-word; word-break: break-word; }
     .spot-detail-row .icon { color: var(--text-tertiary); flex-shrink: 0; }
     .spot-notes { margin-top: 6px; margin-bottom: 12px; color: #ccccd8; font-size: 12px; line-height: 1.6; }
     .spot-actions { display: flex; gap: 8px; flex-wrap: wrap; }
@@ -384,7 +386,7 @@
       border-radius: 12px;
       padding: 14px 16px;
     }
-    .time-content .place-name { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+    .time-content .place-name { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 2px; overflow-wrap: break-word; word-break: break-word; }
     .time-content .place-local { font-size: 12px; color: var(--text-tertiary); margin-bottom: 6px; }
     .time-content .description { font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; line-height: 1.6; }
     .time-content .place-meta-link {
@@ -399,6 +401,7 @@
       font-size: 11px; padding: 3px 10px;
       border-radius: 6px;
       display: inline-flex; align-items: center; gap: 4px;
+      max-width: 100%; overflow: hidden; text-overflow: ellipsis;
     }
     .dtag-transport { background: rgba(74,144,217,0.12); color: #6ab0f3; }
     .dtag-cost { background: rgba(46,204,113,0.1); color: #5fd9a1; }
@@ -465,14 +468,28 @@
       margin-top: 3px; line-height: 1.5;
       word-break: keep-all;
     }
-    /* 모바일: 금액이 길면 비고를 풀 너비로 아래 줄로 */
+    /* 모바일: 예산 카드 + 합계 카드 반응형 */
     @media (max-width: 480px) {
-      .budget-item { gap: 8px; }
+      .budget-item { gap: 8px; padding: 12px 14px; }
+      .budget-item-label { font-size: 13px; }
       .budget-item-value { font-size: 13px; }
       .budget-item-note {
         flex-basis: 100%;
         padding-left: 40px;
         margin-top: 2px;
+      }
+      /* 합계 카드: 금액을 아래줄로 분리 */
+      .budget-item.total {
+        flex-direction: column;
+        align-items: stretch;
+      }
+      .budget-item.total .budget-item-left { width: 100%; }
+      .budget-item.total .budget-item-value {
+        text-align: right;
+        padding-top: 6px;
+        margin-top: 4px;
+        border-top: 1px solid rgba(255,255,255,0.05);
+        font-size: 14px;
       }
     }
     .budget-divider {
@@ -527,8 +544,8 @@
       padding: 14px 16px;
       margin-bottom: 8px;
     }
-    .transport-card .method { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
-    .transport-card .detail { font-size: 12.5px; color: var(--text-secondary); line-height: 1.6; }
+    .transport-card .method { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; overflow-wrap: break-word; }
+    .transport-card .detail { font-size: 12.5px; color: var(--text-secondary); line-height: 1.6; overflow-wrap: break-word; }
 
     /* ===== AIRPORT SECTION ===== */
     .airport-group { margin-bottom: 16px; }
@@ -798,39 +815,31 @@
       </div><div class="budget-divider"></div><div class="budget-item total tier-budget">
         <div class="budget-item-left">
           <span class="budget-icon">💰</span>
-          <div>
-            <div class="budget-item-label">1인 합계 (가성비)</div>
-            <div class="budget-item-note">항공 포함, 가성비 숙소 기준</div>
-          </div>
+          <div class="budget-item-label">1인 합계 (가성비)</div>
         </div>
         <div class="budget-item-value">약 712,000~890,000원</div>
+        <div class="budget-item-note">항공 포함, 가성비 숙소 기준</div>
       </div><div class="budget-item total tier-mid">
         <div class="budget-item-left">
           <span class="budget-icon">💰</span>
-          <div>
-            <div class="budget-item-label">1인 합계 (중급)</div>
-            <div class="budget-item-note">항공 포함, 중급 숙소 기준</div>
-          </div>
+          <div class="budget-item-label">1인 합계 (중급)</div>
         </div>
         <div class="budget-item-value">약 979,000~1,335,000원</div>
+        <div class="budget-item-note">항공 포함, 중급 숙소 기준</div>
       </div><div class="budget-divider"></div><div class="budget-item total tier-couple">
         <div class="budget-item-left">
           <span class="budget-icon">👫</span>
-          <div>
-            <div class="budget-item-label">커플 합계 (가성비)</div>
-            
-          </div>
+          <div class="budget-item-label">커플 합계 (가성비)</div>
         </div>
         <div class="budget-item-value">약 1,424,000~1,780,000원 (2인 합계)</div>
+        
       </div><div class="budget-item total tier-couple">
         <div class="budget-item-left">
           <span class="budget-icon">👫</span>
-          <div>
-            <div class="budget-item-label">커플 합계 (중급)</div>
-            
-          </div>
+          <div class="budget-item-label">커플 합계 (중급)</div>
         </div>
         <div class="budget-item-value">약 1,958,000~2,670,000원 (2인 합계)</div>
+        
       </div></div><div class="tips-section"><div class="section-title" style="font-size:14px"><span class="icon">💡</span> 절약 팁</div><div class="tip-row"><span class="tip-bullet">•</span> 항공: 2~3개월 전 LCC 예매 시 15~20만원대 가능</div><div class="tip-row"><span class="tip-bullet">•</span> 숙소: 도미인 체인이 가성비+퀄리티 모두 잡음</div><div class="tip-row"><span class="tip-bullet">•</span> 교통: Tokyo Subway 72시간 티켓(1,500엔)이 가성비 최고</div><div class="tip-row"><span class="tip-bullet">•</span> 식비: 점심은 1,000엔 이하 세트(라멘, 텐동, 규동), 저녁에 좋은 곳 집중</div><div class="tip-row"><span class="tip-bullet">•</span> 쇼핑: 돈키호테 면세 + 쿠폰 앱 활용</div><div class="tip-row"><span class="tip-bullet">•</span> 음료: 편의점·자판기 활용 (카페보다 1/3 가격)</div></div></div><div class="section"><div class="section-title"><span class="icon">📱</span> 유용한 앱</div><div class="app-grid"><div class="app-card"><div class="app-name">Google Maps</div><div class="app-purpose">길찾기·교통편 검색 (일본 대중교통 경로 매우 정확)</div></div><div class="app-card"><div class="app-name">Tabelog (食べログ)</div><div class="app-purpose">일본 맛집 평점 앱. 3.5 이상이면 맛집 보증.</div></div><div class="app-card"><div class="app-name">Suica 앱 (모바일)</div><div class="app-purpose">iPhone에서 교통카드 충전·사용</div></div><div class="app-card"><div class="app-name">PayPay</div><div class="app-purpose">일본 QR결제 앱 (외국인도 등록 가능, 현금 줄이기 좋음)</div></div><div class="app-card"><div class="app-name">Navitime</div><div class="app-purpose">일본 교통 전문 길찾기 (환승 상세)</div></div></div></div><div class="section"><div class="section-title"><span class="icon">🏨</span> 선택된 호텔</div><div class="hotel-card selected"><span class="hotel-tier tier-premium">4성급 ⭐ 기본 선택</span><div style="font-size:16px;font-weight:700;color:var(--text);margin-top:4px">미츠이 가든 호텔 긴자 프리미어</div><div style="font-size:12px;color:var(--text-tertiary)">三井ガーデンホテル銀座プレミア</div><div style="font-size:13px;color:var(--text-secondary);margin-top:8px;line-height:1.7">📍 긴자/신바시 · 💰 25,000엔/박 (약 222,500원)<br>✨ 최상층 도쿄타워 뷰 · 대욕장 완비 · 긴자 중심부 도보 접근 · 모던 인테리어 · 한국어 대응 스탭<br><em style="color:var(--accent)">💡 긴자 중심부 위치로 츠키지·시부야·아사쿠사·도쿄역 모두 30분 이내 접근. 고층 객실에서 도쿄타워 야경 감상 가능. Booking.com 평점 8.9, 커플 데이트 여행에 최적의 로맨틱한 분위기와 편리한 교통을 겸비.</em></div><div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><a class="btn-map btn-map-primary" href="https://www.google.com/maps/search/?api=1&query=%E4%B8%89%E4%BA%95%E3%82%AC%E3%83%BC%E3%83%87%E3%83%B3%E3%83%9B%E3%83%86%E3%83%AB%E9%8A%80%E5%BA%A7%E3%83%97%E3%83%AC%E3%83%9F%E3%82%A2" target="_blank" rel="noopener">📍 Google Maps</a><a class="btn-map btn-map-secondary" href="https://www.booking.com/hotel/jp/mitsui-garden-ginza-premier.html" target="_blank" rel="noopener">🔗 예약</a></div></div></div><div class="footer-section">
     <div class="disclaimer">⚠️ 이 여행 일정은 AI가 생성한 것입니다. 가격, 영업시간 등은 변동될 수 있으니 방문 전 재확인을 권장합니다. 데이터 소스: LLM 지식 기반</div>
     <div class="footer-text">Generated by Travel Planner Agent · 2026-03-18</div>
