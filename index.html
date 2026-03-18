@@ -434,17 +434,18 @@
     /* ===== BUDGET LIST (IMG_3623 style) ===== */
     .budget-list { display: flex; flex-direction: column; gap: 6px; }
     .budget-item {
-      display: flex; justify-content: space-between; align-items: center;
+      display: flex; justify-content: space-between; align-items: flex-start;
       padding: 14px 16px;
       background: var(--surface);
       border: 1px solid var(--border);
       border-radius: 12px;
       gap: 12px;
       min-height: 52px;
+      flex-wrap: wrap;
     }
     .budget-item-left {
       display: flex; align-items: flex-start; gap: 12px;
-      flex: 1; min-width: 0;
+      flex: 1; min-width: 120px;
     }
     .budget-icon {
       font-size: 18px; flex-shrink: 0;
@@ -458,12 +459,21 @@
     .budget-item-value {
       font-size: 14px; font-weight: 500; color: var(--text-secondary);
       text-align: right; flex-shrink: 0;
-      white-space: nowrap;
     }
     .budget-item-note {
       font-size: 11.5px; color: var(--text-tertiary);
       margin-top: 3px; line-height: 1.5;
       word-break: keep-all;
+    }
+    /* 모바일: 금액이 길면 비고를 풀 너비로 아래 줄로 */
+    @media (max-width: 480px) {
+      .budget-item { gap: 8px; }
+      .budget-item-value { font-size: 13px; }
+      .budget-item-note {
+        flex-basis: 100%;
+        padding-left: 40px;
+        margin-top: 2px;
+      }
     }
     .budget-divider {
       height: 1px; background: var(--border);
@@ -746,57 +756,45 @@
 <div class="page" data-page="6"><div class="page-inner"><div class="section"><div class="section-title"><span class="icon">💰</span> 예산 요약 (1인 기준)</div><div class="budget-list"><div class="budget-item">
         <div class="budget-item-left">
           <span class="budget-icon">✈️</span>
-          <div>
-            <div class="budget-item-label">항공</div>
-            <div class="budget-item-note">피치항공, 제주항공, 티웨이 등 LCC 기준. 4월은 벚꽃 시즌이라 일찍 예매할수록 저렴!</div>
-          </div>
+          <div class="budget-item-label">항공</div>
         </div>
         <div class="budget-item-value">250,000~400,000원 (LCC 왕복 기준)</div>
+        <div class="budget-item-note">피치항공, 제주항공, 티웨이 등 LCC 기준. 4월은 벚꽃 시즌이라 일찍 예매할수록 저렴!</div>
       </div><div class="budget-item">
         <div class="budget-item-left">
           <span class="budget-icon">🏨</span>
-          <div>
-            <div class="budget-item-label">숙박</div>
-            
-          </div>
+          <div class="budget-item-label">숙박</div>
         </div>
         <div class="budget-item-value">1인당 106,800~160,200원</div>
+        
       </div><div class="budget-item">
         <div class="budget-item-left">
           <span class="budget-icon">🍽</span>
-          <div>
-            <div class="budget-item-label">식비</div>
-            <div class="budget-item-note">맛집 중심이지만 가성비 위주로 선별. 라멘·텐동 등 1,000엔대 식사와 야키니쿠·스시 등 3,000~4,000엔대 식사 섞어서.</div>
-          </div>
+          <div class="budget-item-label">식비</div>
         </div>
         <div class="budget-item-value">약 222,500~311,500원</div>
+        <div class="budget-item-note">맛집 중심이지만 가성비 위주로 선별. 라멘·텐동 등 1,000엔대 식사와 야키니쿠·스시 등 3,000~4,000엔대 식사 섞어서.</div>
       </div><div class="budget-item">
         <div class="budget-item-left">
           <span class="budget-icon">🚃</span>
-          <div>
-            <div class="budget-item-label">현지 교통</div>
-            
-          </div>
+          <div class="budget-item-label">현지 교통</div>
         </div>
         <div class="budget-item-value">약 77,700~95,500원</div>
+        
       </div><div class="budget-item">
         <div class="budget-item-left">
           <span class="budget-icon">🎫</span>
-          <div>
-            <div class="budget-item-label">입장료/액티비티</div>
-            
-          </div>
+          <div class="budget-item-label">입장료/액티비티</div>
         </div>
         <div class="budget-item-value">약 49,800~60,500원</div>
+        
       </div><div class="budget-item">
         <div class="budget-item-left">
           <span class="budget-icon">🛍</span>
-          <div>
-            <div class="budget-item-label">쇼핑/기념품</div>
-            
-          </div>
+          <div class="budget-item-label">쇼핑/기념품</div>
         </div>
         <div class="budget-item-value">약 44,500~89,000원</div>
+        
       </div><div class="budget-divider"></div><div class="budget-item total tier-budget">
         <div class="budget-item-left">
           <span class="budget-icon">💰</span>
