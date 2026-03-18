@@ -431,26 +431,39 @@
     .tier-mid { background: rgba(74,144,217,0.15); color: var(--blue); }
     .tier-budget { background: rgba(46,204,113,0.15); color: var(--green); }
 
-    /* ===== BUDGET TABLE ===== */
-    .budget-table {
-      width: 100%; border-collapse: collapse; font-size: 13px;
-    }
-    .budget-table th, .budget-table td {
-      padding: 10px 14px; text-align: left;
-      border-bottom: 1px solid var(--border);
-    }
-    .budget-table th {
+    /* ===== BUDGET LIST (mobile-friendly) ===== */
+    .budget-list { display: flex; flex-direction: column; gap: 6px; }
+    .budget-item {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      padding: 12px 14px;
       background: var(--surface);
-      font-weight: 600; font-size: 12px;
-      color: var(--text-secondary);
-      text-transform: uppercase; letter-spacing: 0.5px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      gap: 10px;
     }
-    .budget-table td { color: var(--text-secondary); }
-    .budget-table tr:last-child {
-      font-weight: 700;
+    .budget-item-label {
+      font-size: 13px; font-weight: 600; color: var(--text);
+      flex-shrink: 0; min-width: 60px;
+    }
+    .budget-item-value {
+      font-size: 13px; color: var(--text-secondary);
+      text-align: right; flex: 1;
+    }
+    .budget-item-note {
+      font-size: 11.5px; color: var(--text-tertiary);
+      margin-top: 4px; line-height: 1.5;
+    }
+    .budget-item.total {
       background: var(--accent-light);
+      border-color: rgba(108,92,231,0.2);
+      margin-top: 4px;
     }
-    .budget-table tr:last-child td { color: var(--text); }
+    .budget-item.total .budget-item-label { color: var(--accent); font-weight: 700; }
+    .budget-item.total .budget-item-value { color: var(--text); font-weight: 700; font-size: 14px; }
+    .budget-divider {
+      height: 1px; background: var(--border);
+      margin: 8px 0;
+    }
 
     /* ===== TRANSPORT CARD ===== */
     .transport-card {
@@ -686,9 +699,39 @@
     <div class="day-cost-badge">💰 약 127,700원</div>
     <div class="day-tip">💡 짐 정리 후 호텔에 맡기거나 코인라커 이용. 공항 3시간 전까지 도착 목표! 면세점 쇼핑 시간도 확보하세요. 남은 엔화 정리는 공항 편의점에서.</div>
   </div><div class="timeline"><div class="time-block"><div class="time-marker"><div class="time-dot" style="background:#F9A826"></div><div class="time-label">08:00</div></div><div class="time-content"><div class="place-name">미츠이 가든 호텔 긴자 프리미어 체크아웃</div><a class="place-meta-link" href="https://www.google.com/maps/search/?api=1&query=%E9%8A%80%E5%BA%A7%20%E3%81%8B%E3%81%A4%E3%81%8B%E3%81%BF" target="_blank" rel="noopener">📍 지도 보기</a><div class="description">짐을 꾸려서 체크아웃. 캐리어는 호텔에 맡기거나, 도쿄역/우에노역 코인라커(400~700엔)에 보관.</div><div class="detail-tags"><span class="dtag dtag-hotel">🏨 호텔에서 호텔 (三井ガーデンホテル銀座プレミア)</span><span class="dtag dtag-cost">💰 코인라커 700엔 (필요 시) (약 6,200원)</span></div></div></div><div class="time-block"><div class="time-marker"><div class="time-dot" style="background:#F9A826"></div><div class="time-label">09:00</div></div><div class="time-content"><div class="place-name">🌸 우에노공원 벚꽃 산책 + 아메요코</div><a class="place-meta-link" href="https://www.google.com/maps/search/?api=1&query=%E4%B8%8A%E9%87%8E%E5%85%AC%E5%9C%92%20%26%20%E3%82%A2%E3%83%A1%E6%A8%AA" target="_blank" rel="noopener">📍 지도 보기</a><div class="description">4월 초라면 벚꽃이 아직 남아있을지도! 우에노공원에서 마지막 벚꽃 감상. 그 후 아메요코 시장에서 1,000엔 해산물 덮밥, 과일 등 마지막 먹방.</div><div class="detail-tags"><span class="dtag dtag-transport">🚃 호텔 → 도보 5분 신바시역 → JR 야마노테선 → 우에노역 (약 20분, 200엔) <a href="https://www.google.com/maps/search/?api=1&query=JR%E4%B8%8A%E9%87%8E%E9%A7%85%20%E5%85%AC%E5%9C%92%E5%8F%A3" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;margin-left:4px">탑승위치</a></span><span class="dtag dtag-hotel">🏨 호텔에서 지하철 20분, 약 6km</span><span class="dtag dtag-cost">💰 아메요코 간식+덮밥 1,500엔 × 2명 = 3,000엔 (약 26,700원)</span></div></div></div><div class="time-block"><div class="time-marker"><div class="time-dot" style="background:#F9A826"></div><div class="time-label">11:00</div></div><div class="time-content"><div class="place-name">🛍️ 마지막 쇼핑 (돈키호테 or 역 주변)</div><a class="place-meta-link" href="https://www.google.com/maps/search/?api=1&query=%E3%83%89%E3%83%B3%E3%83%BB%E3%82%AD%E3%83%9B%E3%83%BC%E3%83%86%20%E6%B8%8B%E8%B0%B7%E6%9C%AC%E5%BA%97" target="_blank" rel="noopener">📍 지도 보기</a><div class="description">남은 기념품·과자 쇼핑! 돈키호테나 역 근처 약국에서 면세 쇼핑. 여권 지참 필수!</div><div class="detail-tags"><span class="dtag dtag-transport">🚃 우에노 → 시부야 (쇼핑) 또는 도쿄역 주변 <a href="https://www.google.com/maps/search/?api=1&query=JR%E4%B8%8A%E9%87%8E%E9%A7%85%20%E5%B1%B1%E6%89%8B%E7%B7%9A%E3%83%9B%E3%83%BC%E3%83%A0%20%20%EB%98%90%EB%8A%94%20%E6%9D%B1%E4%BA%AC%E9%A7%85%20%E5%85%AB%E9%87%8D%E6%B4%B2%E5%8F%A3" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;margin-left:4px">탑승위치</a></span><span class="dtag dtag-hotel">🏨 호텔에서 지하철 20분, 약 6km (우에노 기준)</span><span class="dtag dtag-cost">💰 5,000엔 (예상) (약 44,500원)</span></div></div></div><div class="time-block"><div class="time-marker"><div class="time-dot" style="background:#F9A826"></div><div class="time-label">12:30</div></div><div class="time-content"><div class="place-name">🍜 마지막 식사: 도쿄역 라멘스트리트</div><a class="place-meta-link" href="https://www.google.com/maps/search/?api=1&query=%E4%B8%AD%E8%8F%AF%E8%95%8E%E9%BA%A6%20%E3%81%A8%E3%81%BF%E7%94%B0" target="_blank" rel="noopener">📍 지도 보기</a><div class="description">도쿄역 지하 라멘스트리트에서 마지막 라멘! 토미타의 츠케멘 또는 다른 명점 라멘으로 도쿄 맛집 여행의 피날레.</div><div class="detail-tags"><span class="dtag dtag-transport">🚃 → JR 도쿄역 야에스 지하 1층 <a href="https://www.google.com/maps/search/?api=1&query=%E6%9D%B1%E4%BA%AC%E9%A7%85%20%E5%85%AB%E9%87%8D%E6%B4%B2%E5%8D%97%E5%8F%A3%20B1F%20%E6%9D%B1%E4%BA%AC%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3%E3%82%B9%E3%83%88%E3%83%AA%E3%83%BC%E3%83%88" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;margin-left:4px">탑승위치</a></span><span class="dtag dtag-hotel">🏨 호텔에서 지하철 10분, 약 3km</span><span class="dtag dtag-cost">💰 1,200엔 × 2명 = 2,400엔 (약 21,400원)</span></div></div></div><div class="time-block"><div class="time-marker"><div class="time-dot" style="background:#F9A826"></div><div class="time-label">14:00</div></div><div class="time-content"><div class="place-name">도쿄역 → 나리타공항</div><div class="description">나리타 익스프레스(N'EX)로 공항 이동. 도쿄역에서 약 60분. 출발 2시간 전까지 공항 도착 목표!</div><div class="detail-tags"><span class="dtag dtag-transport">🚃 도쿄역 → 나리타 익스프레스 → 나리타공항 (약 60분, 3,250엔) <a href="https://www.google.com/maps/search/?api=1&query=%E6%9D%B1%E4%BA%AC%E9%A7%85%20%E5%9C%B0%E4%B8%8B%E7%B7%8F%E6%AD%A6%E7%B7%9A%E3%83%9B%E3%83%BC%E3%83%A0" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;margin-left:4px">탑승위치</a></span><span class="dtag dtag-hotel">🏨 호텔에서 지하철 10분, 약 3km (도쿄역까지)</span><span class="dtag dtag-cost">💰 3,250엔 (약 28,900원)</span></div></div></div><div class="time-block"><div class="time-marker"><div class="time-dot" style="background:#F9A826"></div><div class="time-label">15:00</div></div><div class="time-content"><div class="place-name">나리타공항 도착 → 면세점 + 출국</div><div class="description">남은 엔화로 공항 편의점에서 마지막 쇼핑. 면세점 구경 후 출국!</div><div class="detail-tags"><span class="dtag dtag-cost">💰 0엔 (면세 쇼핑 별도) (0원)</span></div></div></div><div class="time-block"><div class="time-marker"><div class="time-dot" style="background:#F9A826"></div><div class="time-label">17:00~18:00</div></div><div class="time-content"><div class="place-name">나리타공항 출발 → 인천공항</div><div class="description">안녕 도쿄, 또 올게요! 비행시간 약 2시간 30분.</div><div class="detail-tags"><span class="dtag dtag-cost">💰 항공권 별도 (-)</span></div></div></div></div></div></div>
-<div class="page" data-page="6"><div class="page-inner"><div class="section"><div class="section-title"><span class="icon">💰</span> 예산 요약 (1인 기준)</div><table class="budget-table"><tr><th>항목</th><th>예상 비용</th><th>비고</th></tr><tr><td>항공</td><td>250,000~400,000원 (LCC 왕복 기준)</td><td>피치항공, 제주항공, 티웨이 등 LCC 기준. 4월은 벚꽃 시즌이라 일찍 예매할수록 저렴!</td></tr><tr><td>숙박</td><td>1인당 106,800~160,200원</td><td></td></tr><tr><td>식비</td><td>약 222,500~311,500원</td><td>맛집 중심이지만 가성비 위주로 선별. 라멘·텐동 등 1,000엔대 식사와 야키니쿠·스시 등 3,000~4,000엔대 식사 섞어서.</td></tr><tr><td>현지 교통</td><td>약 77,700~95,500원</td><td></td></tr><tr><td>입장료/액티비티</td><td>약 49,800~60,500원</td><td></td></tr><tr><td>쇼핑/기념품</td><td>약 44,500~89,000원</td><td></td></tr><tr><td><strong>1인 합계 (가성비)</strong></td><td><strong>약 712,000~890,000원</strong></td><td>항공 포함, 가성비 숙소 기준</td></tr><tr><td><strong>1인 합계 (중급)</strong></td><td><strong>약 979,000~1,335,000원</strong></td><td>항공 포함, 중급 숙소 기준</td></tr><tr><td><strong>커플 합계 (가성비)</strong></td><td><strong>약 1,424,000~1,780,000원 (2인 합계)</strong></td><td></td></tr><tr><td><strong>커플 합계 (중급)</strong></td><td><strong>약 1,958,000~2,670,000원 (2인 합계)</strong></td><td></td></tr></table><div style="margin-top:16px"><div class="section-title" style="font-size:14px"><span class="icon">💡</span> 절약 팁</div><div style="font-size:12.5px;color:var(--text-secondary);padding:4px 0;display:flex;gap:6px"><span style="color:var(--green)">•</span> 항공: 2~3개월 전 LCC 예매 시 15~20만원대 가능</div><div style="font-size:12.5px;color:var(--text-secondary);padding:4px 0;display:flex;gap:6px"><span style="color:var(--green)">•</span> 숙소: 도미인 체인이 가성비+퀄리티 모두 잡음</div><div style="font-size:12.5px;color:var(--text-secondary);padding:4px 0;display:flex;gap:6px"><span style="color:var(--green)">•</span> 교통: Tokyo Subway 72시간 티켓(1,500엔)이 가성비 최고</div><div style="font-size:12.5px;color:var(--text-secondary);padding:4px 0;display:flex;gap:6px"><span style="color:var(--green)">•</span> 식비: 점심은 1,000엔 이하 세트(라멘, 텐동, 규동), 저녁에 좋은 곳 집중</div><div style="font-size:12.5px;color:var(--text-secondary);padding:4px 0;display:flex;gap:6px"><span style="color:var(--green)">•</span> 쇼핑: 돈키호테 면세 + 쿠폰 앱 활용</div><div style="font-size:12.5px;color:var(--text-secondary);padding:4px 0;display:flex;gap:6px"><span style="color:var(--green)">•</span> 음료: 편의점·자판기 활용 (카페보다 1/3 가격)</div></div></div><div class="section"><div class="section-title"><span class="icon">📱</span> 유용한 앱</div><div class="app-grid"><div class="app-card"><div class="app-name">Google Maps</div><div class="app-purpose">길찾기·교통편 검색 (일본 대중교통 경로 매우 정확)</div></div><div class="app-card"><div class="app-name">Tabelog (食べログ)</div><div class="app-purpose">일본 맛집 평점 앱. 3.5 이상이면 맛집 보증.</div></div><div class="app-card"><div class="app-name">Suica 앱 (모바일)</div><div class="app-purpose">iPhone에서 교통카드 충전·사용</div></div><div class="app-card"><div class="app-name">PayPay</div><div class="app-purpose">일본 QR결제 앱 (외국인도 등록 가능, 현금 줄이기 좋음)</div></div><div class="app-card"><div class="app-name">Navitime</div><div class="app-purpose">일본 교통 전문 길찾기 (환승 상세)</div></div></div></div><div class="section"><div class="section-title"><span class="icon">🏨</span> 선택된 호텔</div><div class="hotel-card selected"><span class="hotel-tier tier-premium">4성급 ⭐ 기본 선택</span><div style="font-size:16px;font-weight:700;color:var(--text);margin-top:4px">미츠이 가든 호텔 긴자 프리미어</div><div style="font-size:12px;color:var(--text-tertiary)">三井ガーデンホテル銀座プレミア</div><div style="font-size:13px;color:var(--text-secondary);margin-top:8px;line-height:1.7">📍 긴자/신바시 · 💰 25,000엔/박 (약 222,500원)<br>✨ 최상층 도쿄타워 뷰 · 대욕장 완비 · 긴자 중심부 도보 접근 · 모던 인테리어 · 한국어 대응 스탭<br><em style="color:var(--accent)">💡 긴자 중심부 위치로 츠키지·시부야·아사쿠사·도쿄역 모두 30분 이내 접근. 고층 객실에서 도쿄타워 야경 감상 가능. Booking.com 평점 8.9, 커플 데이트 여행에 최적의 로맨틱한 분위기와 편리한 교통을 겸비.</em></div><div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><a class="btn-map btn-map-primary" href="https://www.google.com/maps/search/?api=1&query=%E4%B8%89%E4%BA%95%E3%82%AC%E3%83%BC%E3%83%87%E3%83%B3%E3%83%9B%E3%83%86%E3%83%AB%E9%8A%80%E5%BA%A7%E3%83%97%E3%83%AC%E3%83%9F%E3%82%A2" target="_blank" rel="noopener">📍 Google Maps</a><a class="btn-map btn-map-secondary" href="https://www.booking.com/hotel/jp/mitsui-garden-ginza-premier.html" target="_blank" rel="noopener">🔗 예약</a></div></div></div><div class="footer-section">
+<div class="page" data-page="6"><div class="page-inner"><div class="section"><div class="section-title"><span class="icon">💰</span> 예산 요약 (1인 기준)</div><div class="budget-list"><div class="budget-item">
+          <div><div class="budget-item-label">✈️ 항공</div><div class="budget-item-note">피치항공, 제주항공, 티웨이 등 LCC 기준. 4월은 벚꽃 시즌이라 일찍 예매할수록 저렴!</div></div>
+          <div class="budget-item-value">250,000~400,000원 (LCC 왕복 기준)</div>
+        </div><div class="budget-item">
+          <div><div class="budget-item-label">🏨 숙박</div></div>
+          <div class="budget-item-value">1인당 106,800~160,200원</div>
+        </div><div class="budget-item">
+          <div><div class="budget-item-label">🍽 식비</div><div class="budget-item-note">맛집 중심이지만 가성비 위주로 선별. 라멘·텐동 등 1,000엔대 식사와 야키니쿠·스시 등 3,000~4,000엔대 식사 섞어서.</div></div>
+          <div class="budget-item-value">약 222,500~311,500원</div>
+        </div><div class="budget-item">
+          <div><div class="budget-item-label">🚃 현지 교통</div></div>
+          <div class="budget-item-value">약 77,700~95,500원</div>
+        </div><div class="budget-item">
+          <div><div class="budget-item-label">🎫 입장료/액티비티</div></div>
+          <div class="budget-item-value">약 49,800~60,500원</div>
+        </div><div class="budget-item">
+          <div><div class="budget-item-label">🛍 쇼핑/기념품</div></div>
+          <div class="budget-item-value">약 44,500~89,000원</div>
+        </div><div class="budget-divider"></div><div class="budget-item total">
+            <div><div class="budget-item-label">1인 합계 (가성비)</div><div class="budget-item-note">항공 포함, 가성비 숙소 기준</div></div>
+            <div class="budget-item-value">약 712,000~890,000원</div>
+          </div><div class="budget-item total">
+              <div><div class="budget-item-label">1인 합계 (중급)</div><div class="budget-item-note">항공 포함, 중급 숙소 기준</div></div>
+              <div class="budget-item-value">약 979,000~1,335,000원</div>
+            </div><div class="budget-divider"></div><div class="budget-item total">
+            <div class="budget-item-label">👫 커플 합계 (가성비)</div>
+            <div class="budget-item-value">약 1,424,000~1,780,000원 (2인 합계)</div>
+          </div><div class="budget-item total">
+              <div class="budget-item-label">👫 커플 합계 (중급)</div>
+              <div class="budget-item-value">약 1,958,000~2,670,000원 (2인 합계)</div>
+            </div></div><div style="margin-top:16px"><div class="section-title" style="font-size:14px"><span class="icon">💡</span> 절약 팁</div><div style="font-size:12.5px;color:var(--text-secondary);padding:4px 0;display:flex;gap:6px"><span style="color:var(--green)">•</span> 항공: 2~3개월 전 LCC 예매 시 15~20만원대 가능</div><div style="font-size:12.5px;color:var(--text-secondary);padding:4px 0;display:flex;gap:6px"><span style="color:var(--green)">•</span> 숙소: 도미인 체인이 가성비+퀄리티 모두 잡음</div><div style="font-size:12.5px;color:var(--text-secondary);padding:4px 0;display:flex;gap:6px"><span style="color:var(--green)">•</span> 교통: Tokyo Subway 72시간 티켓(1,500엔)이 가성비 최고</div><div style="font-size:12.5px;color:var(--text-secondary);padding:4px 0;display:flex;gap:6px"><span style="color:var(--green)">•</span> 식비: 점심은 1,000엔 이하 세트(라멘, 텐동, 규동), 저녁에 좋은 곳 집중</div><div style="font-size:12.5px;color:var(--text-secondary);padding:4px 0;display:flex;gap:6px"><span style="color:var(--green)">•</span> 쇼핑: 돈키호테 면세 + 쿠폰 앱 활용</div><div style="font-size:12.5px;color:var(--text-secondary);padding:4px 0;display:flex;gap:6px"><span style="color:var(--green)">•</span> 음료: 편의점·자판기 활용 (카페보다 1/3 가격)</div></div></div><div class="section"><div class="section-title"><span class="icon">📱</span> 유용한 앱</div><div class="app-grid"><div class="app-card"><div class="app-name">Google Maps</div><div class="app-purpose">길찾기·교통편 검색 (일본 대중교통 경로 매우 정확)</div></div><div class="app-card"><div class="app-name">Tabelog (食べログ)</div><div class="app-purpose">일본 맛집 평점 앱. 3.5 이상이면 맛집 보증.</div></div><div class="app-card"><div class="app-name">Suica 앱 (모바일)</div><div class="app-purpose">iPhone에서 교통카드 충전·사용</div></div><div class="app-card"><div class="app-name">PayPay</div><div class="app-purpose">일본 QR결제 앱 (외국인도 등록 가능, 현금 줄이기 좋음)</div></div><div class="app-card"><div class="app-name">Navitime</div><div class="app-purpose">일본 교통 전문 길찾기 (환승 상세)</div></div></div></div><div class="section"><div class="section-title"><span class="icon">🏨</span> 선택된 호텔</div><div class="hotel-card selected"><span class="hotel-tier tier-premium">4성급 ⭐ 기본 선택</span><div style="font-size:16px;font-weight:700;color:var(--text);margin-top:4px">미츠이 가든 호텔 긴자 프리미어</div><div style="font-size:12px;color:var(--text-tertiary)">三井ガーデンホテル銀座プレミア</div><div style="font-size:13px;color:var(--text-secondary);margin-top:8px;line-height:1.7">📍 긴자/신바시 · 💰 25,000엔/박 (약 222,500원)<br>✨ 최상층 도쿄타워 뷰 · 대욕장 완비 · 긴자 중심부 도보 접근 · 모던 인테리어 · 한국어 대응 스탭<br><em style="color:var(--accent)">💡 긴자 중심부 위치로 츠키지·시부야·아사쿠사·도쿄역 모두 30분 이내 접근. 고층 객실에서 도쿄타워 야경 감상 가능. Booking.com 평점 8.9, 커플 데이트 여행에 최적의 로맨틱한 분위기와 편리한 교통을 겸비.</em></div><div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><a class="btn-map btn-map-primary" href="https://www.google.com/maps/search/?api=1&query=%E4%B8%89%E4%BA%95%E3%82%AC%E3%83%BC%E3%83%87%E3%83%B3%E3%83%9B%E3%83%86%E3%83%AB%E9%8A%80%E5%BA%A7%E3%83%97%E3%83%AC%E3%83%9F%E3%82%A2" target="_blank" rel="noopener">📍 Google Maps</a><a class="btn-map btn-map-secondary" href="https://www.booking.com/hotel/jp/mitsui-garden-ginza-premier.html" target="_blank" rel="noopener">🔗 예약</a></div></div></div><div class="footer-section">
     <div class="disclaimer">⚠️ 이 여행 일정은 AI가 생성한 것입니다. 가격, 영업시간 등은 변동될 수 있으니 방문 전 재확인을 권장합니다. 데이터 소스: LLM 지식 기반</div>
-    <div class="footer-text">Generated by Travel Planner Agent · 2026-03-17</div>
+    <div class="footer-text">Generated by Travel Planner Agent · 2026-03-18</div>
   </div></div></div>
     </div>
 
