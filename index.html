@@ -1,0 +1,864 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>도쿄 3박 4일 여행 일정</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    :root {
+      --bg: #0d0d1a;
+      --surface: rgba(255,255,255,0.04);
+      --surface-hover: rgba(255,255,255,0.08);
+      --surface-active: #1a1a2e;
+      --text: #e8e8f0;
+      --text-secondary: #888898;
+      --text-tertiary: #555568;
+      --border: rgba(255,255,255,0.06);
+      --border-light: rgba(255,255,255,0.1);
+      --accent: #6C5CE7;
+      --accent-light: rgba(108,92,231,0.15);
+      --red: #E84545;
+      --orange: #F9A826;
+      --blue: #4A90D9;
+      --green: #2ECC71;
+      --purple: #7B68EE;
+      --pink: #FF69B4;
+      --teal: #1ABC9C;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body {
+      height: 100%; width: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Pretendard', 'Noto Sans KR', -apple-system, BlinkMacSystemFont, sans-serif;
+      font-size: 15px;
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ===== APP SHELL ===== */
+    .app {
+      width: 100%; height: 100%;
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* ===== PAGES WRAPPER (horizontal scroll-snap) ===== */
+    .pages-wrapper {
+      display: flex;
+      width: 100%; height: 100%;
+      overflow-x: auto;
+      overflow-y: hidden;
+      scroll-snap-type: x mandatory;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    .pages-wrapper::-webkit-scrollbar { display: none; }
+
+    /* ===== SINGLE PAGE ===== */
+    .page {
+      flex: 0 0 100%;
+      width: 100%;
+      height: 100%;
+      scroll-snap-align: start;
+      overflow-y: auto;
+      overflow-x: hidden;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,0.1) transparent;
+    }
+    .page::-webkit-scrollbar { width: 5px; }
+    .page::-webkit-scrollbar-track { background: transparent; }
+    .page::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 3px; }
+
+    .page-inner {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 24px 20px 100px;
+    }
+
+    /* ===== PAGINATION DOTS ===== */
+    .pagination {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 100;
+      background: rgba(13,13,26,0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      padding: 8px 16px;
+      border-radius: 24px;
+      border: 1px solid var(--border);
+    }
+    .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.2);
+      transition: all 0.35s cubic-bezier(.4,0,.2,1);
+      cursor: pointer;
+    }
+    .dot.active {
+      width: 24px;
+      border-radius: 4px;
+      background: var(--accent);
+    }
+    .page-label {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      margin-left: 8px;
+      white-space: nowrap;
+      min-width: 60px;
+    }
+
+    /* ===== NAV ARROWS (desktop) ===== */
+    .nav-arrows {
+      position: fixed;
+      top: 50%;
+      left: 0; right: 0;
+      transform: translateY(-50%);
+      display: flex;
+      justify-content: space-between;
+      padding: 0 12px;
+      pointer-events: none;
+      z-index: 100;
+    }
+    .nav-arrow {
+      pointer-events: all;
+      width: 44px; height: 44px;
+      border-radius: 50%;
+      border: 1px solid var(--border-light);
+      background: rgba(13,13,26,0.8);
+      backdrop-filter: blur(8px);
+      color: var(--text-secondary);
+      font-size: 22px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.2s;
+      opacity: 0.6;
+    }
+    .nav-arrow:hover { opacity: 1; background: rgba(108,92,231,0.2); color: var(--text); border-color: var(--accent); }
+    .nav-arrow:disabled { opacity: 0.15; cursor: default; }
+    .nav-arrow:disabled:hover { background: rgba(13,13,26,0.8); color: var(--text-secondary); border-color: var(--border-light); }
+
+    /* ===== HEADER (gradient) ===== */
+    .hero {
+      text-align: center;
+      padding: 48px 24px 36px;
+      margin: -24px -20px 24px;
+      background: linear-gradient(135deg, #1a1a3e 0%, #0d0d1a 50%, #1a0d2e 100%);
+      border-bottom: 1px solid var(--border);
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute;
+      top: -50%; left: -50%;
+      width: 200%; height: 200%;
+      background: radial-gradient(circle at 30% 40%, rgba(108,92,231,0.08) 0%, transparent 50%),
+                  radial-gradient(circle at 70% 60%, rgba(74,144,217,0.06) 0%, transparent 50%);
+    }
+    .hero-content { position: relative; z-index: 1; }
+    .hero-emoji { font-size: 48px; margin-bottom: 12px; }
+    .hero h1 {
+      font-size: 26px; font-weight: 700;
+      background: linear-gradient(135deg, #e8e8f0 0%, #aaaacc 100%);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 6px;
+    }
+    .hero .subtitle { font-size: 14px; color: var(--text-secondary); margin-bottom: 16px; }
+    .hero .meta-tags { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+    .meta-tag {
+      font-size: 12px; padding: 4px 12px;
+      border-radius: 20px;
+      background: rgba(255,255,255,0.08);
+      color: var(--text-secondary);
+      backdrop-filter: blur(4px);
+    }
+
+    /* ===== SECTION ===== */
+    .section { margin-bottom: 28px; }
+    .section-title {
+      font-size: 16px; font-weight: 700;
+      color: var(--text);
+      margin-bottom: 14px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .section-title .icon { font-size: 18px; }
+
+    /* ===== INFO GRID ===== */
+    .info-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 10px;
+    }
+    .info-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px;
+      transition: all 0.2s;
+    }
+    .info-card:hover { background: var(--surface-hover); }
+    .info-card .label { font-size: 11px; color: var(--text-tertiary); margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+    .info-card .value { font-size: 14px; font-weight: 600; color: var(--text); line-height: 1.4; }
+
+    /* ===== FILTER TABS ===== */
+    .filter-tabs {
+      display: flex; gap: 6px;
+      overflow-x: auto; scrollbar-width: none;
+      padding: 2px 0;
+      margin-bottom: 16px;
+    }
+    .filter-tabs::-webkit-scrollbar { display: none; }
+    .filter-tab {
+      flex-shrink: 0;
+      padding: 8px 16px;
+      border-radius: 10px;
+      border: none;
+      background: var(--surface);
+      color: var(--text-tertiary);
+      font-size: 13px; font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex; align-items: center; gap: 5px;
+    }
+    .filter-tab:hover { background: var(--surface-hover); color: var(--text-secondary); }
+    .filter-tab.active { background: rgba(255,255,255,0.1); color: var(--text); }
+    .filter-count { font-size: 11px; opacity: 0.5; }
+
+    /* ===== SPOT CARD (inspired by shinjuku_map.jsx) ===== */
+    .spot-card {
+      padding: 14px 16px;
+      border-radius: 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      transition: all 0.25s cubic-bezier(.4,0,.2,1);
+      margin-bottom: 8px;
+    }
+    .spot-card:hover { background: var(--surface-hover); }
+    .spot-card.active {
+      background: var(--surface-active);
+      transform: scale(1.01);
+    }
+    .spot-card-header { display: flex; align-items: flex-start; gap: 12px; }
+    .spot-icon {
+      width: 42px; height: 42px;
+      border-radius: 11px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; flex-shrink: 0;
+    }
+    .spot-info { flex: 1; min-width: 0; }
+    .spot-name { font-size: 14px; font-weight: 600; color: var(--text); line-height: 1.3; margin-bottom: 2px; }
+    .spot-name-en { font-size: 11.5px; color: var(--text-tertiary); margin-bottom: 6px; }
+    .spot-tags { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .spot-type {
+      font-size: 10.5px; padding: 2px 8px;
+      border-radius: 20px;
+      font-weight: 600; letter-spacing: 0.3px;
+    }
+    .spot-rating { font-size: 11.5px; color: var(--orange); letter-spacing: -1px; }
+    .spot-rating-text { font-size: 11px; color: var(--text-tertiary); }
+    .spot-distance {
+      font-size: 11px; color: var(--text-tertiary);
+      display: flex; align-items: center; gap: 3px;
+    }
+
+    /* Spot card expanded detail */
+    .spot-detail {
+      margin-top: 12px; padding-top: 12px;
+      border-top: 1px solid var(--border);
+      font-size: 12.5px; color: var(--text-secondary); line-height: 1.7;
+    }
+    .spot-detail-row { display: flex; gap: 6px; margin-bottom: 4px; }
+    .spot-detail-row .icon { color: var(--text-tertiary); flex-shrink: 0; }
+    .spot-notes { margin-top: 6px; margin-bottom: 12px; color: #ccccd8; font-size: 12px; line-height: 1.6; }
+    .spot-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn-map {
+      display: inline-flex; align-items: center; gap: 5px;
+      padding: 7px 14px; border-radius: 8px;
+      font-size: 12.5px; font-weight: 600;
+      text-decoration: none; cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-map-primary {
+      background: linear-gradient(135deg, #4285F4 0%, #34A853 50%, #FBBC05 75%, #EA4335 100%);
+      color: white;
+      box-shadow: 0 2px 8px rgba(66,133,244,0.3);
+    }
+    .btn-map-secondary {
+      background: var(--surface-hover);
+      color: var(--text-secondary);
+      border: 1px solid var(--border);
+    }
+
+    /* ===== MAP CONTAINER (places page) ===== */
+    .map-section {
+      border-radius: 14px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      margin-bottom: 16px;
+      position: relative;
+    }
+    .map-container { height: 280px; width: 100%; }
+    .map-toggle-btn {
+      position: absolute; top: 10px; right: 10px;
+      padding: 6px 12px; border-radius: 8px;
+      background: rgba(13,13,26,0.85); backdrop-filter: blur(8px);
+      border: 1px solid var(--border-light);
+      color: var(--text-secondary); font-size: 12px;
+      cursor: pointer; z-index: 500;
+    }
+
+    /* ===== TIMELINE (day pages) ===== */
+    .day-hero {
+      padding: 28px 24px;
+      margin: -24px -20px 24px;
+      background: linear-gradient(135deg, var(--surface-active) 0%, var(--bg) 100%);
+      border-bottom: 1px solid var(--border);
+    }
+    .day-number {
+      font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 1.5px;
+      margin-bottom: 6px;
+    }
+    .day-theme { font-size: 22px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+    .day-tip {
+      font-size: 12.5px; color: var(--text-secondary);
+      background: rgba(249,168,38,0.08);
+      border: 1px solid rgba(249,168,38,0.15);
+      border-radius: 10px;
+      padding: 10px 14px;
+      margin-top: 12px;
+    }
+    .day-cost-badge {
+      display: inline-block;
+      padding: 3px 10px; border-radius: 6px;
+      background: rgba(46,204,113,0.1);
+      color: var(--green);
+      font-size: 12px; font-weight: 600;
+      margin-top: 8px;
+    }
+
+    .timeline { position: relative; }
+    .timeline::before {
+      content: '';
+      position: absolute; left: 26px; top: 0; bottom: 0;
+      width: 2px;
+      background: linear-gradient(to bottom, var(--border-light), transparent);
+    }
+    .time-block {
+      display: flex; gap: 16px;
+      padding: 16px 0;
+      position: relative;
+    }
+    .time-marker {
+      width: 52px; flex-shrink: 0;
+      text-align: center;
+      position: relative;
+      z-index: 1;
+    }
+    .time-dot {
+      width: 12px; height: 12px;
+      border-radius: 50%;
+      background: var(--accent);
+      border: 2px solid var(--bg);
+      margin: 0 auto 6px;
+    }
+    .time-label { font-size: 11px; font-weight: 700; color: var(--accent); }
+    .time-content {
+      flex: 1; min-width: 0;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+    }
+    .time-content .place-name { font-size: 15px; font-weight: 700; color: var(--text); margin-bottom: 2px; }
+    .time-content .place-local { font-size: 12px; color: var(--text-tertiary); margin-bottom: 6px; }
+    .time-content .description { font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; line-height: 1.6; }
+    .time-content .place-meta-link {
+      color: var(--blue); text-decoration: none;
+      font-size: 12px; display: inline-flex; align-items: center; gap: 3px;
+    }
+    .time-content .place-meta-link:hover { text-decoration: underline; }
+
+    /* Detail tags */
+    .detail-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .dtag {
+      font-size: 11px; padding: 3px 10px;
+      border-radius: 6px;
+      display: inline-flex; align-items: center; gap: 4px;
+    }
+    .dtag-transport { background: rgba(74,144,217,0.12); color: #6ab0f3; }
+    .dtag-cost { background: rgba(46,204,113,0.1); color: #5fd9a1; }
+    .dtag-tip { background: rgba(249,168,38,0.1); color: #f0c060; }
+    .dtag-time { background: rgba(255,255,255,0.05); color: var(--text-secondary); }
+    .dtag-how { background: rgba(255,105,180,0.1); color: #ff8cc8; }
+    .dtag-hotel { background: rgba(108,92,231,0.1); color: #a89cff; }
+
+    /* ===== HOTEL CARD ===== */
+    .hotel-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px 18px;
+      margin-bottom: 10px;
+      transition: all 0.2s;
+    }
+    .hotel-card.selected {
+      border-color: rgba(108,92,231,0.4);
+      box-shadow: 0 4px 20px rgba(108,92,231,0.1);
+    }
+    .hotel-tier {
+      font-size: 10.5px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.5px;
+      padding: 2px 8px; border-radius: 4px;
+      display: inline-block; margin-bottom: 6px;
+    }
+    .tier-luxury { background: rgba(255,105,180,0.15); color: var(--pink); }
+    .tier-premium { background: rgba(249,168,38,0.15); color: var(--orange); }
+    .tier-mid { background: rgba(74,144,217,0.15); color: var(--blue); }
+    .tier-budget { background: rgba(46,204,113,0.15); color: var(--green); }
+
+    /* ===== BUDGET TABLE ===== */
+    .budget-table {
+      width: 100%; border-collapse: collapse; font-size: 13px;
+    }
+    .budget-table th, .budget-table td {
+      padding: 10px 14px; text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    .budget-table th {
+      background: var(--surface);
+      font-weight: 600; font-size: 12px;
+      color: var(--text-secondary);
+      text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .budget-table td { color: var(--text-secondary); }
+    .budget-table tr:last-child {
+      font-weight: 700;
+      background: var(--accent-light);
+    }
+    .budget-table tr:last-child td { color: var(--text); }
+
+    /* ===== TRANSPORT CARD ===== */
+    .transport-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 14px 16px;
+      margin-bottom: 8px;
+    }
+    .transport-card .method { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 4px; }
+    .transport-card .detail { font-size: 12.5px; color: var(--text-secondary); line-height: 1.6; }
+
+    /* ===== AIRPORT SECTION ===== */
+    .airport-group { margin-bottom: 16px; }
+    .airport-name { font-size: 14px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+
+    /* ===== USEFUL APPS ===== */
+    .app-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+      gap: 8px;
+    }
+    .app-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 12px;
+      text-align: center;
+    }
+    .app-card .app-name { font-size: 13px; font-weight: 600; color: var(--text); }
+    .app-card .app-purpose { font-size: 11px; color: var(--text-tertiary); margin-top: 2px; }
+
+    /* ===== FOOTER ===== */
+    .footer-section {
+      margin-top: 32px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+      text-align: center;
+    }
+    .disclaimer {
+      background: rgba(249,168,38,0.08);
+      border: 1px solid rgba(249,168,38,0.15);
+      padding: 12px 16px;
+      border-radius: 10px;
+      font-size: 12px;
+      color: #c8a050;
+      margin-bottom: 12px;
+    }
+    .footer-text { font-size: 11px; color: var(--text-tertiary); }
+
+    /* ===== RESPONSIVE ===== */
+    @media (max-width: 480px) {
+      .hero h1 { font-size: 22px; }
+      .hero { padding: 36px 16px 28px; }
+      .page-inner { padding: 20px 16px 100px; }
+      .info-grid { grid-template-columns: 1fr 1fr; }
+      .nav-arrows { display: none; }
+      .map-container { height: 220px; }
+      .day-hero { padding: 20px 16px; }
+      .time-block { gap: 10px; }
+      .time-marker { width: 42px; }
+      .timeline::before { left: 20px; }
+    }
+
+    @media (min-width: 769px) {
+      .page-inner { max-width: 720px; }
+      .hero h1 { font-size: 30px; }
+      .info-grid { grid-template-columns: repeat(3, 1fr); }
+      .map-container { height: 360px; }
+    }
+
+    /* ===== PRINT ===== */
+    @media print {
+      body { background: white; color: #1a1a1a; }
+      .pagination, .nav-arrows { display: none !important; }
+      .pages-wrapper {
+        display: block;
+        overflow: visible;
+        scroll-snap-type: none;
+      }
+      .page {
+        flex: none; width: 100%; height: auto;
+        overflow: visible;
+        page-break-after: always;
+      }
+      .hero { background: #f0f0f5; }
+      .spot-card, .info-card, .hotel-card, .transport-card, .time-content {
+        background: #f8f8fa; border-color: #ddd;
+      }
+      .map-section { display: none; }
+    }
+
+    /* ===== CUSTOM LEAFLET POPUP ===== */
+    .dark-popup .leaflet-popup-content-wrapper {
+      background: #1a1a2e;
+      color: var(--text);
+      border-radius: 12px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.5);
+      border: 1px solid var(--border-light);
+    }
+    .dark-popup .leaflet-popup-tip { background: #1a1a2e; }
+    .dark-popup .leaflet-popup-content { font-family: inherit; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="pages-wrapper" id="pagesWrapper">
+      <div class="page" data-page="0"><div class="page-inner">
+  <div class="hero">
+    <div class="hero-content">
+      <div class="hero-emoji">🗾</div>
+      <h1>도쿄 3박 4일</h1>
+      <div class="subtitle">일본 · 도쿄 3박 4일 맛집 커플 여행! 라멘·스시·텐동·야키니쿠까지 도쿄의 맛을 총집합했어요. 가성비 좋은 맛집 ...</div>
+      <div class="meta-tags">
+        <span class="meta-tag">✈️ 인천 → 나리타 약 2시간 30분, 인천 → 하네다 약 2시간 20분</span>
+        <span class="meta-tag">🕐 한국보다 0시간 (시차 없음)</span>
+        <span class="meta-tag">💰 일본 엔 (JPY, ¥)</span>
+        <span class="meta-tag">🎯 맛집</span>
+        <span class="meta-tag">💳 가성비</span>
+        <span class="meta-tag">👥 커플</span>
+      </div>
+    </div>
+  </div><div class="section"><div class="section-title"><span class="icon">📋</span> 출발 전 알아두세요</div><div class="info-grid"><div class="info-card"><div class="label">비자</div><div class="value">90일 무비자 입국 가능 (관광 목적)</div></div><div class="info-card"><div class="label">환율</div><div class="value">약 8.9원/엔 (2026년 3월 기준 추정)</div></div><div class="info-card"><div class="label">전압/플러그</div><div class="value">100V / 50Hz (동일본), A타입 (한국 돼지코 그대로 사용 가능, 접지 없는 2구)</div></div><div class="info-card"><div class="label">여행자 보험</div><div class="value">해외여행보험 필수 가입 권장. 일본 의료비가 비싸요 (감기 진료만 5,000~10,000엔).</div></div><div class="info-card"><div class="label">4월 날씨</div><div class="value">평균 13~20°C (최저 10°C, 최고 22°C)</div></div><div class="info-card"><div class="label">복장 추천</div><div class="value">낮: 얇은 긴팔 + 가벼운 자켓 또는 가디건, 밤: 바람막이 또는 얇은 패딩 (저녁 쌀쌀)</div></div></div><div style="margin-top:12px;font-size:12px;color:var(--text-secondary)">📦 준비물: 여권 (유효기간 6개월 이상), 해외여행보험 가입 확인서, 현금 (엔화 2~3만엔), 트래블카드 또는 해외결제 카드, 접이식 우산, 편한 운동화, 가벼운 자켓/가디건, 보조배터리 + 충전 케이블, 와이파이 도시락 또는 eSIM (공항 수령 추천), 일본 교통카드 앱 (모바일 Suica) 또는 현지 구매 준비</div><div style="margin-top:8px;font-size:12px;color:var(--text-secondary)">💳 대부분 가게에서 현금 선호. 특히 라멘집·이자카야 등 소규모 맛집은 현금만 받는 곳이 꽤 있어요. 1인당 2~3만엔 정도 현금 준비하시면 안심.</div></div><div class="section"><div class="section-title"><span class="icon">🚇</span> 추천 교통 패스</div><div class="transport-card">
+        <div class="method">Suica / PASMO</div>
+        <div class="detail">
+          💰 발급 500엔 보증금 + 충전식 (약 4,500원 + 충전분)<br>
+          🏪 공항 JR 창구, 역 자동판매기, 또는 iPhone Apple Wallet에서 모바일 Suica 등록<br>
+          📍 JR, 지하철, 버스, 편의점 결제까지 가능
+          <br>👉 가성비 여행자, 자유 동선
+          <br>💡 4일 여행이면 Suica 하나로 충분할 수 있어요. 1일 평균 1,000~1,500엔 정도 교통비. 잔액 부족하면 역 충전기에서 바로 충전.
+        </div>
+      </div><div class="transport-card">
+        <div class="method">Tokyo Subway Ticket (24/48/72시간)</div>
+        <div class="detail">
+          💰 24h: 800엔 / 48h: 1,200엔 / 72h: 1,500엔 (24h: 약 7,100원 / 48h: 약 10,700원 / 72h: 약 13,400원)<br>
+          🏪 나리타/하네다 공항 관광안내소, BIC CAMERA 일부 매장<br>
+          📍 도쿄메트로 전 노선 + 도에이 지하철 전 노선 (JR 제외)
+          <br>👉 시내 관광 집중형, 커플 여행
+          <br>💡 72시간권이 가성비 최고! 도쿄 시내 관광은 지하철로 거의 다 커버돼요. 단, JR 야마노테선은 별도 요금.
+        </div>
+      </div><div class="transport-card">
+        <div class="method">도쿄 와이드 패스</div>
+        <div class="detail">
+          💰 15,000엔 (3일간) (약 133,500원)<br>
+          🏪 <br>
+          📍 도쿄 근교 JR 전 노선 (가마쿠라, 닛코, 가와고에 등)
+          <br>👉 근교 여행 포함 시
+          <br>💡 도쿄 시내만 다닌다면 불필요. 근교 당일치기를 2회 이상 간다면 가치 있어요.
+        </div>
+      </div></div><div class="section"><div class="section-title"><span class="icon">✈️</span> 공항 → 시내 이동</div><div class="airport-group"><div class="airport-name">나리타공항 (NRT)</div><div class="transport-card">
+            <div class="method">게이세이 액세스 특급
+              <a href="https://www.google.com/maps/search/?api=1&query=%E6%88%90%E7%94%B0%E7%A9%BA%E6%B8%AF%E7%AC%AC1%E3%82%BF%E3%83%BC%E3%83%9F%E3%83%8A%E3%83%AB%20B1F%20%E4%BA%AC%E6%88%90%E7%B7%9A%E6%94%B9%E6%9C%AD%E5%8F%A3" target="_blank" rel="noopener" style="color:var(--blue);font-size:12px;text-decoration:none;margin-left:6px">📍 탑승위치</a>
+            </div>
+            <div class="detail">
+              ⏱ 약 60분 (아사쿠사까지) · 💰 1,270엔 (약 11,300원)
+              <br>💡 가성비 최강! 도쿄 동부(아사쿠사·오시아게) 숙소라면 강추. 외국인 이용률이 가장 높은 교통수단.
+            </div>
+          </div><div class="transport-card">
+            <div class="method">나리타 익스프레스 (N'EX)
+              <a href="https://www.google.com/maps/search/?api=1&query=%E6%88%90%E7%94%B0%E7%A9%BA%E6%B8%AF%E7%AC%AC1%E3%82%BF%E3%83%BC%E3%83%9F%E3%83%8A%E3%83%AB%20B1F%20JR%E6%94%B9%E6%9C%AD%E5%8F%A3" target="_blank" rel="noopener" style="color:var(--blue);font-size:12px;text-decoration:none;margin-left:6px">📍 탑승위치</a>
+            </div>
+            <div class="detail">
+              ⏱ 약 60분 (도쿄역까지) · 💰 3,250엔 (약 29,000원)
+              <br>💡 외국인 전용 N'EX 왕복 할인 티켓(4,070엔)이 매우 가성비 좋아요. JR 동일본 트래블 센터에서 구매 가능.
+            </div>
+          </div><div class="transport-card">
+            <div class="method">스카이라이너 (Skyliner)
+              <a href="https://www.google.com/maps/search/?api=1&query=%E6%88%90%E7%94%B0%E7%A9%BA%E6%B8%AF%E7%AC%AC1%E3%82%BF%E3%83%BC%E3%83%9F%E3%83%8A%E3%83%AB%20B1F%20%E4%BA%AC%E6%88%90%E3%82%B9%E3%82%AB%E3%82%A4%E3%83%A9%E3%82%A4%E3%83%8A%E3%83%BC%E4%B9%97%E3%82%8A%E5%A0%B4" target="_blank" rel="noopener" style="color:var(--blue);font-size:12px;text-decoration:none;margin-left:6px">📍 탑승위치</a>
+            </div>
+            <div class="detail">
+              ⏱ 약 41분 (우에노역까지) · 💰 2,520엔 (약 22,500원)
+              <br>💡 우에노·아사쿠사 방면이면 가장 빠른 선택지.
+            </div>
+          </div><div class="transport-card">
+            <div class="method">리무진 버스
+              <a href="https://www.google.com/maps/search/?api=1&query=%E6%88%90%E7%94%B0%E7%A9%BA%E6%B8%AF%E7%AC%AC1%E3%82%BF%E3%83%BC%E3%83%9F%E3%83%8A%E3%83%AB%201F%20%E5%8D%97%E5%8F%A3%20%E3%83%AA%E3%83%A0%E3%82%B8%E3%83%B3%E3%83%90%E3%82%B9%E4%B9%97%E3%82%8A%E5%A0%B4" target="_blank" rel="noopener" style="color:var(--blue);font-size:12px;text-decoration:none;margin-left:6px">📍 탑승위치</a>
+            </div>
+            <div class="detail">
+              ⏱ 약 75~90분 (신주쿠까지) · 💰 3,200엔 (약 28,500원)
+              <br>💡 호텔 앞까지 가는 노선도 있어서 짐이 많으면 편리해요.
+            </div>
+          </div></div><div class="airport-group"><div class="airport-name">하네다공항 (HND)</div><div class="transport-card">
+            <div class="method">게이큐선 (京急線)
+              <a href="https://www.google.com/maps/search/?api=1&query=%E7%BE%BD%E7%94%B0%E7%A9%BA%E6%B8%AF%E7%AC%AC3%E3%82%BF%E3%83%BC%E3%83%9F%E3%83%8A%E3%83%AB%E9%A7%85%20%E4%BA%AC%E6%80%A5%E7%B7%9A%E6%94%B9%E6%9C%AD%E5%8F%A3" target="_blank" rel="noopener" style="color:var(--blue);font-size:12px;text-decoration:none;margin-left:6px">📍 탑승위치</a>
+            </div>
+            <div class="detail">
+              ⏱ 약 20분 (시나가와역까지) · 💰 300엔 (약 2,700원)
+              <br>💡 시내 접근성이 압도적. 시나가와에서 JR 야마노테선 환승이면 어디든 편해요. 이용객 가장 많은 노선.
+            </div>
+          </div><div class="transport-card">
+            <div class="method">도쿄 모노레일
+              <a href="https://www.google.com/maps/search/?api=1&query=%E7%BE%BD%E7%94%B0%E7%A9%BA%E6%B8%AF%E7%AC%AC3%E3%82%BF%E3%83%BC%E3%83%9F%E3%83%8A%E3%83%AB%E9%A7%85%20%E3%83%A2%E3%83%8E%E3%83%AC%E3%83%BC%E3%83%AB%E6%94%B9%E6%9C%AD%E5%8F%A3" target="_blank" rel="noopener" style="color:var(--blue);font-size:12px;text-decoration:none;margin-left:6px">📍 탑승위치</a>
+            </div>
+            <div class="detail">
+              ⏱ 약 18분 (하마마츠초역까지) · 💰 500엔 (약 4,500원)
+              <br>💡 Suica로 바로 탑승 가능. 하마마츠초에서 야마노테선 환승.
+            </div>
+          </div></div></div></div></div>
+<div class="page" data-page="1"><div class="page-inner">
+  <div class="section" style="margin-bottom:16px">
+    <div class="section-title"><span class="icon">📍</span> 맛집 · 카페 · 숙소</div>
+    <p style="font-size:12.5px;color:var(--text-tertiary);margin-top:-8px;margin-bottom:12px">
+      숙소 기준 거리 표시 · 카드를 탭하면 상세 정보
+    </p>
+  </div><div class="filter-tabs" id="placesFilter"><button class="filter-tab active" data-filter="all" onclick="filterPlaces('all')">📍 전체 <span class="filter-count">(26)</span></button><button class="filter-tab" data-filter="hotel" onclick="filterPlaces('hotel')">🏨 숙소 <span class="filter-count">(6)</span></button><button class="filter-tab" data-filter="restaurant" onclick="filterPlaces('restaurant')">🍽 맛집 <span class="filter-count">(12)</span></button><button class="filter-tab" data-filter="attraction" onclick="filterPlaces('attraction')">⛩️ 관광 <span class="filter-count">(5)</span></button><button class="filter-tab" data-filter="experience" onclick="filterPlaces('experience')">🎨 체험 <span class="filter-count">(2)</span></button><button class="filter-tab" data-filter="shopping" onclick="filterPlaces('shopping')">🛍 쇼핑 <span class="filter-count">(1)</span></button></div><div class="map-section" id="placesMapSection">
+    <div class="map-container" id="placesMap"></div>
+  </div><div id="placesCards"><div class="spot-card" data-cat="hotel" data-idx="0" onclick="toggleSpot(this, 0)"><div class="spot-card-header"><div class="spot-icon" style="background:#6C5CE718">🏨</div><div class="spot-info"><div class="spot-name">미츠이 가든 호텔 긴자 프리미어 <span style="font-size:10px;color:var(--accent)">✓ 선택됨</span></div><div class="spot-name-en">三井ガーデンホテル銀座プレミア</div><div class="spot-tags"><span class="spot-type" style="background:#6C5CE718;color:#6C5CE7">숙소</span><span class="spot-distance">🏨 0m</span></div></div></div><div class="spot-detail" style="display:none" id="spotDetail0"><div class="spot-detail-row"><span class="icon">💰</span> 25,000엔 (약 222,500원)</div><div class="spot-detail-row"><span class="icon">📍</span> 긴자/신바시</div><div class="spot-detail-row"><span class="icon">🏠</span> 東京都中央区銀座8-13-1</div><div class="spot-detail-row"><span class="icon">📞</span> <a href="tel:+81335431131" style="color:var(--text-secondary);text-decoration:none">+81-3-3543-1131</a></div><div class="spot-notes">✨ 최상층 도쿄타워 뷰 · 대욕장 완비 · 긴자 중심부 도보 접근 · 모던 인테리어 · 한국어 대응 스탭</div><div class="spot-notes" style="color:var(--accent)">긴자 중심부 위치로 츠키지·시부야·아사쿠사·도쿄역 모두 30분 이내 접근. 고층 객실에서 도쿄타워 야경 감상 가능. Booking.com 평점 8.9, 커플 데이트 여행에 최적의 로맨틱한 분위기와 편리한 교통을 겸비.</div><div class="spot-notes">💡 2주 전 예약 시 얼리버드 20% 할인 가능. 도쿄타워 뷰 객실은 인기가 높으니 일찍 예약 필수!</div><div class="spot-actions"><a class="btn-map btn-map-primary" href="https://www.google.com/maps/search/?api=1&query=%E4%B8%89%E4%BA%95%E3%82%AC%E3%83%BC%E3%83%87%E3%83%B3%E3%83%9B%E3%83%86%E3%83%AB%E9%8A%80%E5%BA%A7%E3%83%97%E3%83%AC%E3%83%9F%E3%82%A2" target="_blank" rel="noopener" onclick="event.stopPropagation()">📍 Google Maps</a><a class="btn-map btn-map-secondary" href="https://www.google.com/maps/dir/?api=1&destination=%E4%B8%89%E4%BA%95%E3%82%AC%E3%83%BC%E3%83%87%E3%83%B3%E3%83%9B%E3%83%86%E3%83%AB%E9%8A%80%E5%BA%A7%E3%83%97%E3%83%AC%E3%83%9F%E3%82%A2&travelmode=walking" target="_blank" rel="noopener" onclick="event.stopPropagation()">🧭 길찾기</a><a class="btn-map btn-map-secondary" href="https://www.booking.com/hotel/jp/mitsui-garden-ginza-premier.html" target="_blank" rel="noopener" onclick="event.stopPropagation()">🔗 예약</a></div></div></div><div class="spot-card" data-cat="hotel" data-idx="1" onclick="toggleSpot(this, 1)"><div class="spot-card-header"><div class="spot-icon" style="background:#6C5CE718">🏨</div><div class="spot-info"><div class="spot-name">도미인 프리미엄 긴자</div><div class="spot-name-en">ドーミーインPREMIUM銀座</div><div class="spot-tags"><span class="spot-type" style="background:#6C5CE718;color:#6C5CE7">숙소</span><span class="spot-distance">🏨 939m</span></div></div></div><div class="spot-detail" style="display:none" id="spotDetail1"><div class="spot-detail-row"><span class="icon">💰</span> 12,000엔 (약 106,800원)</div><div class="spot-detail-row"><span class="icon">📍</span> 긴자/히가시긴자</div><div class="spot-detail-row"><span class="icon">🏠</span> 東京都中央区銀座3-11-4</div><div class="spot-detail-row"><span class="icon">📞</span> <a href="tel:+81335435489" style="color:var(--text-secondary);text-decoration:none">+81-3-3543-5489</a></div><div class="spot-notes">✨ 무료 야식 라멘(밤 9시반) · 대욕장 완비 · 조식 뷔페 맛집 · 커플 더블룸 가성비 최고</div><div class="spot-notes" style="color:var(--accent)">가성비 최강 체인 호텔. 긴자 위치에 무료 야식 라멘과 대욕장까지 제공하여 가격 대비 만족도 최상.</div><div class="spot-notes">💡 Booking.com이나 Agoda에서 2~3주 전 예약이 가장 저렴. 도미인 체인은 어디든 퀄리티 보장!</div><div class="spot-actions"><a class="btn-map btn-map-primary" href="https://www.google.com/maps/search/?api=1&query=%E3%83%89%E3%83%BC%E3%83%9F%E3%83%BC%E3%82%A4%E3%83%B3PREMIUM%E9%8A%80%E5%BA%A7" target="_blank" rel="noopener" onclick="event.stopPropagation()">📍 Google Maps</a><a class="btn-map btn-map-secondary" href="https://www.google.com/maps/dir/?api=1&destination=%E3%83%89%E3%83%BC%E3%83%9F%E3%83%BC%E3%82%A4%E3%83%B3PREMIUM%E9%8A%80%E5%BA%A7&travelmode=walking" target="_blank" rel="noopener" onclick="event.stopPropagation()">🧭 길찾기</a><a class="btn-map btn-map-secondary" href="https://www.booking.com/hotel/jp/dormy-inn-premium-ginza.html" target="_blank" rel="noopener" onclick="event.stopPropagation()">🔗 예약</a></div></div></div><div class="spot-card" data-cat="hotel" data-idx="2" onclick="toggleSpot(this, 2)"><div class="spot-card-header"><div class="spot-icon" style="background:#6C5CE718">🏨</div><div class="spot-info"><div class="spot-name">비아인 도쿄 닛폰바시</div><div class="spot-name-en">ヴィアイン東京日本橋</div><div class="spot-tags"><span class="spot-type" style="background:#6C5CE718;color:#6C5CE7">숙소</span><span class="spot-distance">🏨 3.3km</span></div></div></div><div class="spot-detail" style="display:none" id="spotDetail2"><div class="spot-detail-row"><span class="icon">💰</span> 9,000엔 (약 80,100원)</div><div class="spot-detail-row"><span class="icon">📍</span> 니혼바시/고덴마초</div><div class="spot-detail-row"><span class="icon">🏠</span> 東京都中央区日本橋小伝馬町11-6</div><div class="spot-detail-row"><span class="icon">📞</span> <a href="tel:+81336640489" style="color:var(--text-secondary);text-decoration:none">+81-3-3664-0489</a></div><div class="spot-notes">✨ 무료 조식 제공 · JR 도쿄역 도보 15분 · 신축 깨끗한 객실 · 세탁실 완비</div><div class="spot-notes" style="color:var(--accent)">JR 계열 호텔로 안정적 품질. 니혼바시 위치로 츠키지·아사쿠사·도쿄역 접근 우수, 최저가 수준의 가성비.</div><div class="spot-notes">💡 JR 계열 호텔이라 안정적. 공식 사이트 예약 시 회원 가격 할인 적용.</div><div class="spot-actions"><a class="btn-map btn-map-primary" href="https://www.google.com/maps/search/?api=1&query=%E3%83%B4%E3%82%A3%E3%82%A2%E3%82%A4%E3%83%B3%E6%9D%B1%E4%BA%AC%E6%97%A5%E6%9C%AC%E6%A9%8B" target="_blank" rel="noopener" onclick="event.stopPropagation()">📍 Google Maps</a><a class="btn-map btn-map-secondary" href="https://www.google.com/maps/dir/?api=1&destination=%E3%83%B4%E3%82%A3%E3%82%A2%E3%82%A4%E3%83%B3%E6%9D%B1%E4%BA%AC%E6%97%A5%E6%9C%AC%E6%A9%8B&travelmode=walking" target="_blank" rel="noopener" onclick="event.stopPropagation()">🧭 길찾기</a><a class="btn-map btn-map-secondary" href="https://www.booking.com/hotel/jp/via-inn-tokyo-nihombashi.html" target="_blank" rel="noopener" onclick="event.stopPropagation()">🔗 예약</a></div></div></div><div class="spot-card" data-cat="hotel" data-idx="3" onclick="toggleSpot(this, 3)"><div class="spot-card-header"><div class="spot-icon" style="background:#6C5CE718">🏨</div><div class="spot-info"><div class="spot-name">시부야 스트림 엑셀 호텔 도큐</div><div class="spot-name-en">渋谷ストリーム エクセルホテル東急</div><div class="spot-tags"><span class="spot-type" style="background:#6C5CE718;color:#6C5CE7">숙소</span><span class="spot-distance">🏨 5.2km</span></div></div></div><div class="spot-detail" style="display:none" id="spotDetail3"><div class="spot-detail-row"><span class="icon">💰</span> 25,000엔 (약 222,500원)</div><div class="spot-detail-row"><span class="icon">📍</span> 시부야</div><div class="spot-detail-row"><span class="icon">🏠</span> 東京都渋谷区渋谷3-21-3</div><div class="spot-detail-row"><span class="icon">📞</span> <a href="tel:+81334060109" style="color:var(--text-secondary);text-decoration:none">+81-3-3406-0109</a></div><div class="spot-notes">✨ 2018년 신축 모던 디자인 · 시부야역 직결 (비 안맞고 이동) · 고층 시티뷰 · 1층 레스토랑·카페 다양</div><div class="spot-notes" style="color:var(--accent)">시부야 중심 위치, 역 직결 교통 최강. 하라주쿠·다이칸야마·에비스 접근 최적. 모던한 분위기의 커플 호텔.</div><div class="spot-notes">💡 시부야역 직결이라 교통 최강. 일찍 예약하면 스탠다드 2만엔대 가능. 고층 시티뷰 룸 요청 추천.</div><div class="spot-actions"><a class="btn-map btn-map-primary" href="https://www.google.com/maps/search/?api=1&query=%E6%B8%8B%E8%B0%B7%E3%82%B9%E3%83%88%E3%83%AA%E3%83%BC%E3%83%A0%20%E3%82%A8%E3%82%AF%E3%82%BB%E3%83%AB%E3%83%9B%E3%83%86%E3%83%AB%E6%9D%B1%E6%80%A5" target="_blank" rel="noopener" onclick="event.stopPropagation()">📍 Google Maps</a><a class="btn-map btn-map-secondary" href="https://www.google.com/maps/dir/?api=1&destination=%E6%B8%8B%E8%B0%B7%E3%82%B9%E3%83%88%E3%83%AA%E3%83%BC%E3%83%A0%20%E3%82%A8%E3%82%AF%E3%82%BB%E3%83%AB%E3%83%9B%E3%83%86%E3%83%AB%E6%9D%B1%E6%80%A5&travelmode=walking" target="_blank" rel="noopener" onclick="event.stopPropagation()">🧭 길찾기</a><a class="btn-map btn-map-secondary" href="https://www.booking.com/hotel/jp/shibuya-stream-excel-tokyu.html" target="_blank" rel="noopener" onclick="event.stopPropagation()">🔗 예약</a></div></div></div><div class="spot-card" data-cat="hotel" data-idx="4" onclick="toggleSpot(this, 4)"><div class="spot-card-header"><div class="spot-icon" style="background:#6C5CE718">🏨</div><div class="spot-info"><div class="spot-name">아만 도쿄</div><div class="spot-name-en">アマン東京</div><div class="spot-tags"><span class="spot-type" style="background:#6C5CE718;color:#6C5CE7">숙소</span><span class="spot-distance">🏨 2.4km</span></div></div></div><div class="spot-detail" style="display:none" id="spotDetail4"><div class="spot-detail-row"><span class="icon">💰</span> 150,000엔 (약 1,335,000원)</div><div class="spot-detail-row"><span class="icon">📍</span> 오테마치/도쿄역</div><div class="spot-detail-row"><span class="icon">🏠</span> 東京都千代田区大手町1-5-6 大手町タワー</div><div class="spot-detail-row"><span class="icon">📞</span> <a href="tel:+81352243333" style="color:var(--text-secondary);text-decoration:none">+81-3-5224-3333</a></div><div class="spot-notes">✨ 일본 전통 료칸 감성의 미니멀 인테리어 · 33~38층 압도적 도시 전망 · 아만 스파 (숙박 포함 이용) · 미슐랭 레스토랑 레벨 조식</div><div class="spot-notes" style="color:var(--accent)">도쿄역 도보 5분, 긴자·니혼바시 도보권. 일본 전통미와 현대 럭셔리의 정점. 특별한 기념일 여행에 완벽.</div><div class="spot-notes">💡 1박이라도 기념일에 스플러지 추천. 공식 사이트 직접 예약 시 조식 포함 패키지가 있어요.</div><div class="spot-actions"><a class="btn-map btn-map-primary" href="https://www.google.com/maps/search/?api=1&query=%E3%82%A2%E3%83%9E%E3%83%B3%E6%9D%B1%E4%BA%AC" target="_blank" rel="noopener" onclick="event.stopPropagation()">📍 Google Maps</a><a class="btn-map btn-map-secondary" href="https://www.google.com/maps/dir/?api=1&destination=%E3%82%A2%E3%83%9E%E3%83%B3%E6%9D%B1%E4%BA%AC&travelmode=walking" target="_blank" rel="noopener" onclick="event.stopPropagation()">🧭 길찾기</a><a class="btn-map btn-map-secondary" href="https://www.booking.com/hotel/jp/aman-tokyo.html" target="_blank" rel="noopener" onclick="event.stopPropagation()">🔗 예약</a></div></div></div><div class="spot-card" data-cat="hotel" data-idx="5" onclick="toggleSpot(this, 5)"><div class="spot-card-header"><div class="spot-icon" style="background:#6C5CE718">🏨</div><div class="spot-info"><div class="spot-name">파크 하얏트 도쿄</div><div class="spot-name-en">パーク ハイアット 東京</div><div class="spot-tags"><span class="spot-type" style="background:#6C5CE718;color:#6C5CE7">숙소</span><span class="spot-distance">🏨 6.6km</span></div></div></div><div class="spot-detail" style="display:none" id="spotDetail5"><div class="spot-detail-row"><span class="icon">💰</span> 100,000엔 (약 890,000원)</div><div class="spot-detail-row"><span class="icon">📍</span> 신주쿠 (니시신주쿠)</div><div class="spot-detail-row"><span class="icon">🏠</span> 東京都新宿区西新宿3-7-1-2</div><div class="spot-detail-row"><span class="icon">📞</span> <a href="tel:+81353221234" style="color:var(--text-secondary);text-decoration:none">+81-3-5322-1234</a></div><div class="spot-notes">✨ 52층 뉴욕 그릴 바 (영화 촬영지) · 42~52층 전 객실 시티뷰 · 인피니티 풀 + 피트니스 · 세계적 서비스 수준</div><div class="spot-notes" style="color:var(--accent)">영화 '사랑도 통역이 되나요' 촬영지로 유명. 신주쿠 고층에서 도쿄 파노라마 뷰 감상. 오모이데요코초, 하라주쿠 접근 용이.</div><div class="spot-notes">💡 뉴욕 그릴 디너는 숙박 안해도 예약 가능하지만, 숙박 시 우선 예약. 하얏트 포인트 활용 추천.</div><div class="spot-actions"><a class="btn-map btn-map-primary" href="https://www.google.com/maps/search/?api=1&query=%E3%83%91%E3%83%BC%E3%82%AF%20%E3%83%8F%E3%82%A4%E3%82%A2%E3%83%83%E3%83%88%20%E6%9D%B1%E4%BA%AC" target="_blank" rel="noopener" onclick="event.stopPropagation()">📍 Google Maps</a><a class="btn-map btn-map-secondary" href="https://www.google.com/maps/dir/?api=1&destination=%E3%83%91%E3%83%BC%E3%82%AF%20%E3%83%8F%E3%82%A4%E3%82%A2%E3%83%83%E3%83%88%20%E6%9D%B1%E4%BA%AC&travelmode=walking" target="_blank" rel="noopener" onclick="event.stopPropagation()">🧭 길찾기</a><a class="btn-map btn-map-secondary" href="https://www.booking.com/hotel/jp/park-hyatt-tokyo.html" target="_blank" rel="noopener" onclick="event.stopPropagation()">🔗 예약</a></div></div></div><div class="spot-card" data-cat="restaurant" data-idx="6" onclick="toggleSpot(this, 6)"><div class="spot-card-header"><div class="spot-icon" style="background:#F9A82618">🍜</div><div class="spot-info"><div class="spot-name">아후리 라멘 에비스점</div><div class="spot-name-en">AFURI 恵比寿</div><div class="spot-tags"><span class="spot-type" style="background:#F9A82618;color:#F9A826">라멘</span><span class="spot-distance">🏨 4.9km</span></div></div></div><div class="spot-detail" style="display:none" id="spotDetail6"><div class="spot-detail-row"><span class="icon">💰</span> 1,000~1,500엔 (약 8,900~13,400원)</div><div class="spot-detail-row"><span class="icon">🕐</span> 11:00~다음날 05:00</div><div class="spot-detail-row"><span class="icon">📍</span> 에비스</div><div class="spot-detail-row"><span class="icon">🏠</span> 東京都渋谷区恵比寿1-1-7 117ビル 1F</div><div class="spot-detail-row"><span class="icon">📞</span> <a href="tel:+81357950750" style="color:var(--text-secondary);text-decoration:none">+81-3-5795-0750</a></div><div class="spot-detail-row"><span class="icon">🚶</span> JR 에비스역 서쪽 출구에서 도보 3분. 에비스 스카이워크 방면으로 나와서 왼쪽.</div><div class="spot-detail-row"><span class="icon">⏳</span> 점심 20~30분, 저녁 10~20분 대기</div><div class="spot-notes">🍽 추천: 유자시오 라멘 (柚子塩らーめん), 유자쇼유 라멘 (柚子醤油らーめん), 차슈 토핑 추가</div><div class="spot-notes">💬 입구 왼쪽 식권기에서 메뉴 선택 후 결제. 한국어 메뉴 안내는 없지만 사진이 있어서 고르기 쉬워요. 면 익힘 정도(카타메=딱딱, 후츠우=보통)를 물어봐요.</div><div class="spot-notes">💡 점심 러시(12~13시) 피하면 대기 없이 바로 입장 가능. 카운터석이라 커플이 나란히 앉기 좋아요.</div><div class="spot-notes">유자시오(유자소금) 라멘으로 유명한 인기 라멘집. 깔끔한 국물이 특징이라 느끼한 걸 싫어하는 커플에게 딱이에요.</div><div class="spot-actions"><a class="btn-map btn-map-primary" href="https://www.google.com/maps/search/?api=1&query=AFURI%20%E6%81%B5%E6%AF%94%E5%AF%BF" target="_blank" rel="noopener" onclick="event.stopPropagation()">📍 Google Maps</a><a class="btn-map btn-map-secondary" href="https://www.google.com/maps/dir/?api=1&destination=AFURI%20%E6%81%B5%E6%AF%94%E5%AF%BF&travelmode=walking" target="_blank" rel="noopener" onclick="event.stopPropagation()">🧭 길찾기</a></div></div></div><div class="spot-card" data-cat="restaurant" data-idx="7" onclick="toggleSpot(this, 7)"><div class="spot-card-header"><div class="spot-icon" style="background:#E8454518">🍣</div><div class="spot-info"><div class="spot-name">츠키지 스시다이</div><div class="spot-name-en">築地すし大</div><div class="spot-tags"><span class="spot-type" style="background:#E8454518;color:#E84545">스시</span><span class="spot-distance">🏨 1.0km</span></div></div></div><div class="spot-detail" style="display:none" id="spotDetail7"><div class="spot-detail-row"><span class="icon">💰</span> 3,000~5,000엔 (약 26,700~44,500원)</div><div class="spot-detail-row"><span class="icon">🕐</span> 07:00~14:00</div><div class="spot-detail-row"><span class="icon">📍</span> 츠키지</div><div class="spot-detail-row"><span class="icon">🏠</span> 東京都中央区築地4-13-9</div><div class="spot-detail-row"><span class="icon">📞</span> <a href="tel:+81335476797" style="color:var(--text-secondary);text-decoration:none">+81-3-3547-6797</a></div><div class="spot-detail-row"><span class="icon">🚶</span> 도쿄메트로 히비야선 츠키지역 1번 출구에서 도보 5분. 츠키지 외시장 안쪽.</div><div class="spot-detail-row"><span class="icon">⏳</span> 평일 30~60분, 주말 60~120분</div><div class="spot-notes">🍽 추천: 오마카세 세트 (おまかせセット, 10관), 중트로 추가 (中とろ), 타마고</div><div class="spot-notes">💬 줄 서서 기다리는 게 일상. 오마카세 세트 주문하면 셰프가 하나씩 쥐어줘요. '와사비 적게(ワサビ少なめ)'도 OK.</div><div class="spot-notes">💡 아침 일찍(7시) 가면 대기 시간이 짧아요. 도요스로 이전한 건 '내시장'이고, 외시장은 그대로 영업 중!</div><div class="spot-notes">츠키지 외시장에서 가장 인기 있는 스시집 중 하나. 신선한 네타로 만든 오마카세 세트가 가성비 최강.</div><div class="spot-actions"><a class="btn-map btn-map-primary" href="https://www.google.com/maps/search/?api=1&query=%E7%AF%89%E5%9C%B0%E3%81%99%E3%81%97%E5%A4%A7" target="_blank" rel="noopener" onclick="event.stopPropagation()">📍 Google Maps</a><a class="btn-map btn-map-secondary" href="https://www.google.com/maps/dir/?api=1&destination=%E7%AF%89%E5%9C%B0%E3%81%99%E3%81%97%E5%A4%A7&travelmode=walking" target="_blank" rel="noopener" onclick="event.stopPropagation()">🧭 길찾기</a></div></div></div><div class="spot-card" data-cat="restaurant" data-idx="8" onclick="toggleSpot(this, 8)"><div class="spot-card-header"><div class="spot-icon" style="background:#F9A82618">🍜</div><div class="spot-info"><div class="spot-name">이치란 라멘 시부야점</div><div class="spot-name-en">一蘭 渋谷店</div><div class="spot-tags"><span class="spot-type" style="background:#F9A82618;color:#F9A826">라멘</span><span class="spot-distance">🏨 5.5km</span></div></div></div><div class="spot-detail" style="display:none" id="spotDetail8"><div class="spot-detail-row"><span class="icon">💰</span> 980~1,500엔 (약 8,700~13,400원)</div><div class="spot-detail-row"><span class="icon">🕐</span> 24시간 영업</div><div class="spot-detail-row"><span class="icon">📍</span> 시부야</div><div class="spot-detail-row"><span class="icon">🏠</span> 東京都渋谷区宇田川町13-7</div><div class="spot-detail-row"><span class="icon">📞</span> <a href="tel:+81334631039" style="color:var(--text-secondary);text-decoration:none">+81-3-3463-1039</a></div><div class="spot-detail-row"><span class="icon">🚶</span> JR 시부야역 하치코 출구에서 도보 5분. 센터가이(Center街) 방면.</div><div class="spot-detail-row"><span class="icon">⏳</span> 점심·저녁 10~30분</div><div class="spot-notes">🍽 추천: 이치란 라멘 (天然とんこつラーメン), 교체 라멘 (替え玉, 면 추가), 반숙 달걀 토핑</div><div class="spot-notes">💬 식권기에서 구매 → 자리에 앉으면 맛 조절 종이를 작성(면 익힘, 기름양, 마늘, 소스 등). 한국어 안내지 있어요!</div><div class="spot-notes">💡 24시간이니까 야식으로도 딱! 칸막이석이지만 커플석(나란히 칸막이 해제)도 요청 가능해요.</div><div class="spot-notes">1인 칸막이 부스로 유명한 돈코츠 라멘 체인. 취향에 맞게 커스터마이징 가능한 주문서가 재미있어요.</div><div class="spot-actions"><a class="btn-map btn-map-primary" href="https://www.google.com/maps/search/?api=1&query=%E4%B8%80%E8%98%AD%20%E6%B8%8B%E8%B0%B7%E5%BA%97" target="_blank" rel="noopener" onclick="event.stopPropagation()">📍 Google Maps</a><a class="btn-map btn-map-secondary" href="https://www.google.com/maps/dir/?api=1&destination=%E4%B8%80%E8%98%AD%20%E6%B8%8B%E8%B0%B7%E5%BA%97&travelmode=walking" target="_blank" rel="noopener" onclick="event.stopPropagation()">🧭 길찾기</a></div></div></div><div class="spot-card" data-cat="restaurant" data-idx="9" onclick="toggleSpot(this, 9)"><div class="spot-card-header"><div class="spot-icon" style="background:#E8454518">🍽</div><div class="spot-info"><div class="spot-name">긴자 카츠카미</div><div class="spot-name-en">銀座 かつかみ</div><div class="spot-tags"><span class="spot-type" style="background:#E8454518;color:#E84545">돈카츠</span><span class="spot-distance">🏨 860m</span></div></div></div><div class="spot-detail" style="display:none" id="spotDetail9"><div class="spot-detail-row"><span class="icon">💰</span> 1,500~2,500엔 (약 13,400~22,300원)</div><div class="spot-detail-row"><span class="icon">🕐</span> 11:00~22:00</div><div class="spot-detail-row"><span class="icon">📍</span> 긴자</div><div class="spot-detail-row"><span class="icon">🏠</span> 東京都中央区銀座7-8-14 銀座セブンビル B1F</div><div class="spot-detail-row"><span class="icon">📞</span> <a href="tel:+81362746989" style="color:var(--text-secondary);text-decoration:none">+81-3-6274-6989</a></div><div class="spot-detail-row"><span class="icon">🚶</span> 도쿄메트로 긴자역 A3 출구에서 도보 3분.</div><div class="spot-detail-row"><span class="icon">⏳</span> 점심 15~30분</div><div class="spot-notes">🍽 추천: 특선 로스카츠 정식 (特ロースかつ定食), 히레카츠 정식 (ヒレかつ定食), 카츠카레 (かつカレー)</div><div class="spot-notes">💬 테이블에 참깨+소스 세트가 있어요. 참깨를 갈아서 소스에 섞어 드시면 정석! 밥·캬베츠(양배추)는 무한리필.</div><div class="spot-notes">💡 점심 세트가 저녁보다 200~300엔 저렴해요. 바삭한 식감을 위해 나오자마자 바로 드세요!</div><div class="spot-notes">두꺼운 로스카츠가 바삭하면서 육즙이 살아있는 돈카츠 명가. 밥·된장국·양배추 리필 무료!</div><div class="spot-actions"><a class="btn-map btn-map-primary" href="https://www.google.com/maps/search/?api=1&query=%E9%8A%80%E5%BA%A7%20%E3%81%8B%E3%81%A4%E3%81%8B%E3%81%BF" target="_blank" rel="noopener" onclick="event.stopPropagation()">📍 Google Maps</a><a class="btn-map btn-map-secondary" href="https://www.google.com/maps/dir/?api=1&destination=%E9%8A%80%E5%BA%A7%20%E3%81%8B%E3%81%A4%E3%81%8B%E3%81%BF&travelmode=walking" target="_blank" rel="noopener" onclick="event.stopPropagation()">🧭 길찾기</a></div></div></div><div class="spot-card" data-cat="restaurant" data-idx="10" onclick="toggleSpot(this, 10)"><div class="spot-card-header"><div class="spot-icon" style="background:#E8454518">🥩</div><div class="spot-info"><div class="spot-name">모모텐지 나카메구로점</div><div class="spot-name-en">桃天児 中目黒店</div><div class="spot-tags"><span class="spot-type" style="background:#E8454518;color:#E84545">야키니쿠</span><span class="spot-distance">🏨 5.9km</span></div></div></div><div class="spot-detail" style="display:none" id="spotDetail10"><div class="spot-detail-row"><span class="icon">💰</span> 3,000~5,000엔 (1인) (약 26,700~44,500원)</div><div class="spot-detail-row"><span class="icon">🕐</span> 17:00~23:00</div><div class="spot-detail-row"><span class="icon">📍</span> 나카메구로</div><div class="spot-detail-row"><span class="icon">🏠</span> 東京都目黒区上目黒1-5-10 中目黒マンション 1F</div><div class="spot-detail-row"><span class="icon">📞</span> <a href="tel:+81337605929" style="color:var(--text-secondary);text-decoration:none">+81-3-3760-5929</a></div><div class="spot-detail-row"><span class="icon">🚶</span> 도쿄메트로 히비야선 나카메구로역에서 도보 5분. 메구로강 방면.</div><div class="spot-detail-row"><span class="icon">⏳</span> 주말 저녁 20~40분</div><div class="spot-notes">🍽 추천: 모듬 세트 (盛り合わせ), 하라미 (ハラミ), 갈비 (カルビ), 냉면 (冷麺)</div><div class="spot-notes">💬 2인 세트가 가장 가성비 좋아요. 터치패널 주문이라 일본어 몰라도 사진 보고 고르면 OK.</div><div class="spot-notes">💡 4월이면 나카메구로 벚꽃길 산책 후 저녁으로 딱! 메구로강 벚꽃이 장관이에요.</div><div class="spot-notes">분위기 좋은 나카메구로에서 가성비 좋은 야키니쿠. 커플 데이트로 인기 있는 곳.</div><div class="spot-actions"><a class="btn-map btn-map-primary" href="https://www.google.com/maps/search/?api=1&query=%E6%A1%83%E5%A4%A9%E5%85%90%20%E4%B8%AD%E7%9B%AE%E9%BB%92%E5%BA%97" target="_blank" rel="noopener" onclick="event.stopPropagation()">📍 Google Maps</a><a class="btn-map btn-map-secondary" href="https://www.google.com/maps/dir/?api=1&destination=%E6%A1%83%E5%A4%A9%E5%85%90%20%E4%B8%AD%E7%9B%AE%E9%BB%92%E5%BA%97&travelmode=walking" target="_blank" rel="noopener" onclick="event.stopPropagation()">🧭 길찾기</a></div></div></div><div class="spot-card" data-cat="restaurant" data-idx="11" onclick="toggleSpot(this, 11)"><div class="spot-card-header"><div class="spot-icon" style="background:#E8454518">🍽</div><div class="spot-info"><div class="spot-name">후쿠요시 야키토리</div><div class="spot-name-en">ふくよし</div><div class="spot-tags"><span class="spot-type" style="background:#E8454518;color:#E84545">야키토리</span><span class="spot-distance">🏨 930m</span></div></div></div><div class="spot-detail" style="display:none" id="spotDetail11"><div class="spot-detail-row"><span class="icon">💰</span> 2,000~3,500엔 (1인, 음료 포함) (약 17,800~31,200원)</div><div class="spot-detail-row"><span class="icon">🕐</span> 16:00~23:00</div><div class="spot-detail-row"><span class="icon">📍</span> 유라쿠초</div><div class="spot-detail-row"><span class="icon">🏠</span> 東京都千代田区有楽町2-4-4</div><div class="spot-detail-row"><span class="icon">📞</span> <a href="tel:+81335011603" style="color:var(--text-secondary);text-decoration:none">+81-3-3501-1603</a></div><div class="spot-detail-row"><span class="icon">🚶</span> JR 유라쿠초역 히비야 출구에서 도보 1분. 고가다리 아래 골목.</div><div class="spot-detail-row"><span class="icon">⏳</span> 금요일 저녁 30분+, 평일 대기 거의 없음</div><div class="spot-notes">🍽 추천: 모듬 꼬치 세트 (焼き鳥盛り合わせ), 츠쿠네 (つくね), 하이볼 (ハイボール)</div><div class="spot-notes">💬 오마카세(5본 세트) 주문하면 편해요. 하이볼이나 레몬사워와 함께!</div><div class="spot-notes">💡 고가다리 아래 분위기가 일본 드라마 느낌이라 커플 사진 찍기도 좋아요. 연기 냄새가 옷에 배니 참고!</div><div class="spot-notes">유라쿠초 고가다리 아래 야키토리 골목의 숨은 명가. 현지인이 퇴근 후 들르는 분위기 있는 곳.</div><div class="spot-actions"><a class="btn-map btn-map-primary" href="https://www.google.com/maps/search/?api=1&query=%E3%81%B5%E3%81%8F%E3%82%88%E3%81%97" target="_blank" rel="noopener" onclick="event.stopPropagation()">📍 Google Maps</a><a class="btn-map btn-map-secondary" href="https://www.google.com/maps/dir/?api=1&destination=%E3%81%B5%E3%81%8F%E3%82%88%E3%81%97&travelmode=walking" target="_blank" rel="noopener" onclick="event.stopPropagation()">🧭 길찾기</a></div></div></div><div class="spot-card" data-cat="restaurant" data-idx="12" onclick="toggleSpot(this, 12)"><div class="spot-card-header"><div class="spot-icon" style="background:#F9A82618">🍤</div><div class="spot-info"><div class="spot-name">텐동 카네코 한노스케 니혼바시점</div><div class="spot-name-en">天丼 金子半之助 日本橋本店</div><div class="spot-tags"><span class="spot-type" style="background:#F9A82618;color:#F9A826">텐동</span><span class="spot-distance">🏨 2.5km</span></div></div></div><div class="spot-detail" style="display:none" id="spotDetail12"><div class="spot-detail-row"><span class="icon">💰</span> 900~1,500엔 (약 8,000~13,400원)</div><div class="spot-detail-row"><span class="icon">🕐</span> 11:00~22:00</div><div class="spot-detail-row"><span class="icon">📍</span> 니혼바시</div><div class="spot-detail-row"><span class="icon">🏠</span> 東京都中央区日本橋室町1-11-15</div><div class="spot-detail-row"><span class="icon">📞</span> <a href="tel:+81332430707" style="color:var(--text-secondary);text-decoration:none">+81-3-3243-0707</a></div><div class="spot-detail-row"><span class="icon">🚶</span> 도쿄메트로 긴자선/한조몬선 미츠코시마에역 A1 출구에서 도보 3분.</div><div class="spot-detail-row"><span class="icon">⏳</span> 점심 30~50분, 저녁 10~20분</div><div class="spot-notes">🍽 추천: 텐동 (天丼), 상텐동 (上天丼), 반숙 달걀 텐푸라 추가</div><div class="spot-notes">💬 기본 텐동이 가장 인기! 밥 양 조절(오모리=대, 후츠우=보통) 물어봐요. 타레(소스)는 걸쭉한 달콤 간장.</div><div class="spot-notes">💡 980엔에 이 퀄리티?! 가성비의 끝판왕. 오후 2~3시 사이가 대기 가장 짧아요.</div><div class="spot-notes">줄 서서 먹는 가성비 텐동 맛집. 밥 위에 거대한 튀김이 넘치도록 올라와요!</div><div class="spot-actions"><a class="btn-map btn-map-primary" href="https://www.google.com/maps/search/?api=1&query=%E5%A4%A9%E4%B8%BC%20%E9%87%91%E5%AD%90%E5%8D%8A%E4%B9%8B%E5%8A%A9%20%E6%97%A5%E6%9C%AC%E6%A9%8B%E6%9C%AC%E5%BA%97" target="_blank" rel="noopener" onclick="event.stopPropagation()">📍 Google Maps</a><a class="btn-map btn-map-secondary" href="https://www.google.com/maps/dir/?api=1&destination=%E5%A4%A9%E4%B8%BC%20%E9%87%91%E5%AD%90%E5%8D%8A%E4%B9%8B%E5%8A%A9%20%E6%97%A5%E6%9C%AC%E6%A9%8B%E6%9C%AC%E5%BA%97&travelmode=walking" target="_blank" rel="noopener" onclick="event.stopPropagation()">🧭 길찾기</a></div></div></div><div class="spot-card" data-cat="restaurant" data-idx="13" onclick="toggleSpot(this, 13)"><div class="spot-card-header"><div class="spot-icon" style="background:#F9A82618">🍜</div><div class="spot-info"><div class="spot-name">토미타 라멘 (마츠도)</div><div class="spot-name-en">中華蕎麦 とみ田</div><div class="spot-tags"><span class="spot-type" style="background:#F9A82618;color:#F9A826">츠케멘</span><span class="spot-distance">🏨 1.7km</span></div></div></div><div class="spot-detail" style="display:none" id="spotDetail13"><div class="spot-detail-row"><span class="icon">💰</span> 1,100~1,500엔 (약 9,800~13,400원)</div><div class="spot-detail-row"><span class="icon">🕐</span> 10:30~23:00 (라멘스트리트 분점)</div><div class="spot-detail-row"><span class="icon">📍</span> 마츠도 (도쿄 근교)</div><div class="spot-detail-row"><span class="icon">🏠</span> 東京都千代田区丸の内1-9-1 東京駅一番街 B1F ラーメンストリート内</div><div class="spot-detail-row"><span class="icon">📞</span> <a href="tel:+81332116788" style="color:var(--text-secondary);text-decoration:none">+81-3-3211-6788</a></div><div class="spot-detail-row"><span class="icon">🚶</span> JR 도쿄역 야에스 남쪽 출구 → 지하 1층 도쿄 라멘스트리트 내.</div><div class="spot-detail-row"><span class="icon">⏳</span> 점심 20~40분</div><div class="spot-notes">🍽 추천: 특제 츠케멘 (特製つけめん), 아츠모리 (あつもり, 따뜻한 면)</div><div class="spot-notes">💬 도쿄역 야에스 지하 라멘스트리트 분점(松戸富田麺業) 추천. 식권기에서 구매. 면양은 300g이 기본!</div><div class="spot-notes">💡 도쿄역 경유할 때 점심으로 딱! 라멘스트리트에 다른 유명 라멘집도 있어서 선택의 폭이 넓어요.</div><div class="spot-notes">일본 라멘 대회 7연패의 전설. 도쿄 역 지하 라멘스트리트에 분점이 있어 접근 용이.</div><div class="spot-actions"><a class="btn-map btn-map-primary" href="https://www.google.com/maps/search/?api=1&query=%E4%B8%AD%E8%8F%AF%E8%95%8E%E9%BA%A6%20%E3%81%A8%E3%81%BF%E7%94%B0" target="_blank" rel="noopener" onclick="event.stopPropagation()">📍 Google Maps</a><a class="btn-map btn-map-secondary" href="https://www.google.com/maps/dir/?api=1&destination=%E4%B8%AD%E8%8F%AF%E8%95%8E%E9%BA%A6%20%E3%81%A8%E3%81%BF%E7%94%B0&travelmode=walking" target="_blank" rel="noopener" onclick="event.stopPropagation()">🧭 길찾기</a></div></div></div><div class="spot-card" data-cat="restaurant" data-idx="14" onclick="toggleSpot(this, 14)"><div class="spot-card-header"><div class="spot-icon" style="background:#E8454518">🍽</div><div class="spot-info"><div class="spot-name">겐카츠 긴자점</div><div class="spot-name-en">げんかつ 銀座店</div><div class="spot-tags"><span class="spot-type" style="background:#E8454518;color:#E84545">규카츠</span><span class="spot-distance">🏨 846m</span></div></div></div><div class="spot-detail" style="display:none" id="spotDetail14"><div class="spot-detail-row"><span class="icon">💰</span> 1,300~2,500엔 (약 11,600~22,300원)</div><div class="spot-detail-row"><span class="icon">🕐</span> 11:00~22:00</div><div class="spot-detail-row"><span class="icon">📍</span> 긴자</div><div class="spot-detail-row"><span class="icon">🏠</span> 東京都中央区銀座4-3-7 銀座猿谷ビル B1F</div><div class="spot-detail-row"><span class="icon">📞</span> <a href="tel:+81335612917" style="color:var(--text-secondary);text-decoration:none">+81-3-3561-2917</a></div><div class="spot-detail-row"><span class="icon">🚶</span> 도쿄메트로 긴자역 C2 출구에서 도보 2분.</div><div class="spot-detail-row"><span class="icon">⏳</span> 점심 20~40분</div><div class="spot-notes">🍽 추천: 규카츠 정식 (牛かつ定食), 특상 규카츠 (特上牛かつ)</div><div class="spot-notes">💬 기본 규카츠 정식이 가장 인기. 레어로 나오니까 돌판에 한 조각씩 올려 원하는 만큼 익혀 드세요.</div><div class="spot-notes">💡 와사비+소금으로 먹으면 고기 본연의 맛이! 소스 3종(와사비, 소금, 데미글라스) 다 시도해보세요.</div><div class="spot-notes">겉바속촉 규카츠(소고기 카츠)! 돌판에 올려 원하는 익힘 정도로 조절 가능.</div><div class="spot-actions"><a class="btn-map btn-map-primary" href="https://www.google.com/maps/search/?api=1&query=%E3%81%92%E3%82%93%E3%81%8B%E3%81%A4%20%E9%8A%80%E5%BA%A7%E5%BA%97" target="_blank" rel="noopener" onclick="event.stopPropagation()">📍 Google Maps</a><a class="btn-map btn-map-secondary" href="https://www.google.com/maps/dir/?api=1&destination=%E3%81%92%E3%82%93%E3%81%8B%E3%81%A4%20%E9%8A%80%E5%BA%A7%E5%BA%97&travelmode=walking" target="_blank" rel="noopener" onclick="event.stopPropagation()">🧭 길찾기</a></div></div></div><div class="spot-card" data-cat="restaurant" data-idx="15" onclick="toggleSpot(this, 15)"><div class="spot-card-header"><div class="spot-icon" style="background:#E8454518">🍽</div><div class="spot-info"><div class="spot-name">몬자야키 콘도</div><div class="spot-name-en">もんじゃ近どう</div><div class="spot-tags"><span class="spot-type" style="background:#E8454518;color:#E84545">몬자야키</span><span class="spot-distance">🏨 1.6km</span></div></div></div><div class="spot-detail" style="display:none" id="spotDetail15"><div class="spot-detail-row"><span class="icon">💰</span> 1,500~2,500엔 (1인) (약 13,400~22,300원)</div><div class="spot-detail-row"><span class="icon">🕐</span> 11:30~22:00</div><div class="spot-detail-row"><span class="icon">📍</span> 츠키시마</div><div class="spot-detail-row"><span class="icon">🏠</span> 東京都中央区月島3-12-10</div><div class="spot-detail-row"><span class="icon">📞</span> <a href="tel:+81335334555" style="color:var(--text-secondary);text-decoration:none">+81-3-3533-4555</a></div><div class="spot-detail-row"><span class="icon">🚶</span> 도에이 오에도선 츠키시마역 7번 출구에서 도보 3분. 몬자스트리트 입구.</div><div class="spot-detail-row"><span class="icon">⏳</span> 주말 점심 20~30분</div><div class="spot-notes">🍽 추천: 명란치즈 몬자 (明太もちチーズもんじゃ), 해물 몬자 (海鮮もんじゃ), 오코노미야키</div><div class="spot-notes">💬 처음이면 가게 직원에게 구워달라고 하세요(焼いてください). 작은 헤라(꼬마)로 철판에서 직접 떠먹는 게 포인트!</div><div class="spot-notes">💡 커플이 함께 만들어 먹는 재미가 있어요! 2~3가지 맛 주문해서 나눠 먹기 추천. 츠키지에서 걸어갈 수 있는 거리(도보 15분).</div><div class="spot-notes">츠키시마 몬자스트리트의 대표 맛집. 도쿄 로컬 음식 몬자야키를 체험할 수 있어요.</div><div class="spot-actions"><a class="btn-map btn-map-primary" href="https://www.google.com/maps/search/?api=1&query=%E3%82%82%E3%82%93%E3%81%98%E3%82%83%E8%BF%91%E3%81%A9%E3%81%86" target="_blank" rel="noopener" onclick="event.stopPropagation()">📍 Google Maps</a><a class="btn-map btn-map-secondary" href="https://www.google.com/maps/dir/?api=1&destination=%E3%82%82%E3%82%93%E3%81%98%E3%82%83%E8%BF%91%E3%81%A9%E3%81%86&travelmode=walking" target="_blank" rel="noopener" onclick="event.stopPropagation()">🧭 길찾기</a></div></div></div><div class="spot-card" data-cat="restaurant" data-idx="16" onclick="toggleSpot(this, 16)"><div class="spot-card-header"><div class="spot-icon" style="background:#4A90D918">☕</div><div class="spot-info"><div class="spot-name">사루가쿠 커피</div><div class="spot-name-en">猿楽珈琲</div><div class="spot-tags"><span class="spot-type" style="background:#4A90D918;color:#4A90D9">카페</span><span class="spot-distance">🏨 5.7km</span></div></div></div><div class="spot-detail" style="display:none" id="spotDetail16"><div class="spot-detail-row"><span class="icon">💰</span> 500~1,200엔 (약 4,500~10,700원)</div><div class="spot-detail-row"><span class="icon">🕐</span> 10:00~19:00</div><div class="spot-detail-row"><span class="icon">📍</span> 다이칸야마</div><div class="spot-detail-row"><span class="icon">🏠</span> 東京都渋谷区猿楽町2-3</div><div class="spot-detail-row"><span class="icon">📞</span> <a href="tel:+81364161360" style="color:var(--text-secondary);text-decoration:none">+81-3-6416-1360</a></div><div class="spot-detail-row"><span class="icon">🚶</span> 도큐 도요코선 다이칸야마역 정면출구에서 도보 5분.</div><div class="spot-detail-row"><span class="icon">⏳</span> 거의 없음</div><div class="spot-notes">🍽 추천: 핸드드립 커피, 카페라떼, 치즈케이크</div><div class="spot-notes">💬 자리에 앉아서 주문. 디저트 세트가 가성비 좋아요.</div><div class="spot-notes">💡 근처 츠타야 서점(T-SITE)도 같이 구경하면 좋아요. 다이칸야마~나카메구로 산책 코스에 넣으면 완벽.</div><div class="spot-notes">다이칸야마의 조용한 골목에 위치한 분위기 있는 커피숍. 커플 데이트 코스로 인기.</div><div class="spot-actions"><a class="btn-map btn-map-primary" href="https://www.google.com/maps/search/?api=1&query=%E7%8C%BF%E6%A5%BD%E7%8F%88%E7%90%B2" target="_blank" rel="noopener" onclick="event.stopPropagation()">📍 Google Maps</a><a class="btn-map btn-map-secondary" href="https://www.google.com/maps/dir/?api=1&destination=%E7%8C%BF%E6%A5%BD%E7%8F%88%E7%90%B2&travelmode=walking" target="_blank" rel="noopener" onclick="event.stopPropagation()">🧭 길찾기</a></div></div></div><div class="spot-card" data-cat="restaurant" data-idx="17" onclick="toggleSpot(this, 17)"><div class="spot-card-header"><div class="spot-icon" style="background:#E8454518">🍽</div><div class="spot-info"><div class="spot-name">오모이데요코초 (추억의 골목)</div><div class="spot-name-en">思い出横丁</div><div class="spot-tags"><span class="spot-type" style="background:#E8454518;color:#E84545">이자카야 골목</span><span class="spot-distance">🏨 6.3km</span></div></div></div><div class="spot-detail" style="display:none" id="spotDetail17"><div class="spot-detail-row"><span class="icon">💰</span> 1,500~3,000엔 (1인, 음료 포함) (약 13,400~26,700원)</div><div class="spot-detail-row"><span class="icon">🕐</span> 대부분 17:00~24:00</div><div class="spot-detail-row"><span class="icon">📍</span> 신주쿠</div><div class="spot-detail-row"><span class="icon">🏠</span> 東京都新宿区西新宿1-2</div><div class="spot-detail-row"><span class="icon">📞</span> <a href="tel:+81333647993" style="color:var(--text-secondary);text-decoration:none">+81-3-3364-7993</a></div><div class="spot-detail-row"><span class="icon">🚶</span> JR 신주쿠역 서쪽 출구에서 도보 2분. 오모이데요코초 간판 보임.</div><div class="spot-detail-row"><span class="icon">⏳</span> 가게마다 다름, 돌아다니며 빈자리 찾기</div><div class="spot-notes">🍽 추천: 야키토리 모듬, 모츠니코미 (もつ煮込み, 곱창조림), 생맥주</div><div class="spot-notes">💬 가게가 작으니 2인 기준으로 찾아보세요. 대부분 현금만 받으니 준비 필수!</div><div class="spot-notes">💡 분위기가 최고! 사진 찍기 좋은 네온사인 골목. 단, 좁고 연기 많으니 밝은 옷은 피하세요.</div><div class="spot-notes">신주쿠 서쪽의 좁은 골목에 이자카야·야키토리·라멘집이 빽빽하게 모여있는 레트로 골목. 일본 서민 문화 체험.</div><div class="spot-actions"><a class="btn-map btn-map-primary" href="https://www.google.com/maps/search/?api=1&query=%E6%80%9D%E3%81%84%E5%87%BA%E6%A8%AA%E4%B8%81" target="_blank" rel="noopener" onclick="event.stopPropagation()">📍 Google Maps</a><a class="btn-map btn-map-secondary" href="https://www.google.com/maps/dir/?api=1&destination=%E6%80%9D%E3%81%84%E5%87%BA%E6%A8%AA%E4%B8%81&travelmode=walking" target="_blank" rel="noopener" onclick="event.stopPropagation()">🧭 길찾기</a></div></div></div><div class="spot-card" data-cat="attraction" data-idx="18" onclick="toggleSpot(this, 18)"><div class="spot-card-header"><div class="spot-icon" style="background:#2ECC7118">⛩️</div><div class="spot-info"><div class="spot-name">센소지 (아사쿠사)</div><div class="spot-name-en">浅草寺</div><div class="spot-tags"><span class="spot-type" style="background:#2ECC7118;color:#2ECC71">사찰</span><span class="spot-distance">🏨 6.4km</span></div></div></div><div class="spot-detail" style="display:none" id="spotDetail18"><div class="spot-detail-row"><span class="icon">💰</span> 무료 (나카미세 거리 간식비 별도) (0원)</div><div class="spot-detail-row"><span class="icon">🕐</span> 경내 자유 / 본당 06:00~17:00</div><div class="spot-detail-row"><span class="icon">📍</span> 아사쿠사</div><div class="spot-detail-row"><span class="icon">🏠</span> 東京都台東区浅草2-3-1</div><div class="spot-detail-row"><span class="icon">📞</span> <a href="tel:+81338420181" style="color:var(--text-secondary);text-decoration:none">+81-3-3842-0181</a></div><div class="spot-detail-row"><span class="icon">🚶</span> 도쿄메트로 긴자선 아사쿠사역 1번 출구에서 도보 3분.</div><div class="spot-notes">💡 나카미세 거리에서 닌교야키, 아게만주, 멜론빵 등 먹을거리 많아요! 오미쿠지(제비뽑기, 100엔)도 재미로 해보세요.</div><div class="spot-notes">도쿄에서 가장 오래된 사찰. 카미나리몬(雷門) 앞 커플 사진은 도쿄 여행 필수 인증샷!</div><div class="spot-actions"><a class="btn-map btn-map-primary" href="https://www.google.com/maps/search/?api=1&query=%E6%B5%85%E8%8D%89%E5%AF%BA" target="_blank" rel="noopener" onclick="event.stopPropagation()">📍 Google Maps</a><a class="btn-map btn-map-secondary" href="https://www.google.com/maps/dir/?api=1&destination=%E6%B5%85%E8%8D%89%E5%AF%BA&travelmode=walking" target="_blank" rel="noopener" onclick="event.stopPropagation()">🧭 길찾기</a></div></div></div><div class="spot-card" data-cat="attraction" data-idx="19" onclick="toggleSpot(this, 19)"><div class="spot-card-header"><div class="spot-icon" style="background:#2ECC7118">⛩️</div><div class="spot-info"><div class="spot-name">시부야 스크램블 교차로 & 시부야 스카이</div><div class="spot-name-en">渋谷スクランブル交差点 & SHIBUYA SKY</div><div class="spot-tags"><span class="spot-type" style="background:#2ECC7118;color:#2ECC71">랜드마크</span><span class="spot-distance">🏨 5.4km</span></div></div></div><div class="spot-detail" style="display:none" id="spotDetail19"><div class="spot-detail-row"><span class="icon">💰</span> 시부야 스카이 2,000엔 (온라인 사전예약 1,800엔) (약 16,000~17,800원)</div><div class="spot-detail-row"><span class="icon">🕐</span> 시부야 스카이 10:00~22:30 (최종입장 21:20)</div><div class="spot-detail-row"><span class="icon">📍</span> 시부야</div><div class="spot-detail-row"><span class="icon">🏠</span> 東京都渋谷区渋谷2-24-12 渋谷スクランブルスクエア</div><div class="spot-detail-row"><span class="icon">📞</span> <a href="tel:+81342210229" style="color:var(--text-secondary);text-decoration:none">+81-3-4221-0229</a></div><div class="spot-detail-row"><span class="icon">🚶</span> JR 시부야역 하치코 출구에서 바로. 시부야 스카이는 시부야 스크램블 스퀘어 14F에서 입장.</div><div class="spot-notes">💡 일몰 시간대 티켓이 가장 인기! 사전 온라인 예매 필수. 옥상에서 도쿄타워+도쿄 야경을 한눈에.</div><div class="spot-notes">세계에서 가장 큰 횡단보도 + 230m 높이 전망대. 야경이 특히 예쁘니 해질 무렵 방문 추천.</div><div class="spot-actions"><a class="btn-map btn-map-primary" href="https://www.google.com/maps/search/?api=1&query=%E6%B8%8B%E8%B0%B7%E3%82%B9%E3%82%AF%E3%83%A9%E3%83%B3%E3%83%96%E3%83%AB%E4%BA%A4%E5%B7%AE%E7%82%B9%20%26%20SHIBUYA%20SKY" target="_blank" rel="noopener" onclick="event.stopPropagation()">📍 Google Maps</a><a class="btn-map btn-map-secondary" href="https://www.google.com/maps/dir/?api=1&destination=%E6%B8%8B%E8%B0%B7%E3%82%B9%E3%82%AF%E3%83%A9%E3%83%B3%E3%83%96%E3%83%AB%E4%BA%A4%E5%B7%AE%E7%82%B9%20%26%20SHIBUYA%20SKY&travelmode=walking" target="_blank" rel="noopener" onclick="event.stopPropagation()">🧭 길찾기</a></div></div></div><div class="spot-card" data-cat="attraction" data-idx="20" onclick="toggleSpot(this, 20)"><div class="spot-card-header"><div class="spot-icon" style="background:#2ECC7118">⛩️</div><div class="spot-info"><div class="spot-name">메이지진구</div><div class="spot-name-en">明治神宮</div><div class="spot-tags"><span class="spot-type" style="background:#2ECC7118;color:#2ECC71">신사</span><span class="spot-distance">🏨 5.5km</span></div></div></div><div class="spot-detail" style="display:none" id="spotDetail20"><div class="spot-detail-row"><span class="icon">💰</span> 무료 (에마 소원패 500엔) (0원 (에마 약 4,500원))</div><div class="spot-detail-row"><span class="icon">🕐</span> 일출~일몰 (계절에 따라 변동, 4월 약 05:00~18:00)</div><div class="spot-detail-row"><span class="icon">📍</span> 하라주쿠</div><div class="spot-detail-row"><span class="icon">🏠</span> 東京都渋谷区代々木神園町1-1</div><div class="spot-detail-row"><span class="icon">📞</span> <a href="tel:+81333795511" style="color:var(--text-secondary);text-decoration:none">+81-3-3379-5511</a></div><div class="spot-detail-row"><span class="icon">🚶</span> JR 하라주쿠역 또는 도쿄메트로 메이지진구마에역에서 도보 1분.</div><div class="spot-notes">💡 하라주쿠·오모테산도 쇼핑과 동선 연결 완벽. 참배 후 다케시타 거리로 바로 넘어갈 수 있어요.</div><div class="spot-notes">도심 속 거대한 숲에 둘러싸인 신사. 산책하며 힐링하기 좋고, 커플 소원 그림판(에마)도 유명.</div><div class="spot-actions"><a class="btn-map btn-map-primary" href="https://www.google.com/maps/search/?api=1&query=%E6%98%8E%E6%B2%BB%E7%A5%9E%E5%AE%AE" target="_blank" rel="noopener" onclick="event.stopPropagation()">📍 Google Maps</a><a class="btn-map btn-map-secondary" href="https://www.google.com/maps/dir/?api=1&destination=%E6%98%8E%E6%B2%BB%E7%A5%9E%E5%AE%AE&travelmode=walking" target="_blank" rel="noopener" onclick="event.stopPropagation()">🧭 길찾기</a></div></div></div><div class="spot-card" data-cat="attraction" data-idx="21" onclick="toggleSpot(this, 21)"><div class="spot-card-header"><div class="spot-icon" style="background:#2ECC7118">⛩️</div><div class="spot-info"><div class="spot-name">도쿄타워</div><div class="spot-name-en">東京タワー</div><div class="spot-tags"><span class="spot-type" style="background:#2ECC7118;color:#2ECC71">랜드마크</span><span class="spot-distance">🏨 1.5km</span></div></div></div><div class="spot-detail" style="display:none" id="spotDetail21"><div class="spot-detail-row"><span class="icon">💰</span> 메인데크 1,200엔, 탑데크 투어 2,800엔 (메인데크 약 10,700원, 탑데크 약 24,900원)</div><div class="spot-detail-row"><span class="icon">🕐</span> 09:00~23:00 (최종입장 22:30)</div><div class="spot-detail-row"><span class="icon">📍</span> 시바공원</div><div class="spot-detail-row"><span class="icon">🏠</span> 東京都港区芝公園4-2-8</div><div class="spot-detail-row"><span class="icon">📞</span> <a href="tel:+81334335111" style="color:var(--text-secondary);text-decoration:none">+81-3-3433-5111</a></div><div class="spot-detail-row"><span class="icon">🚶</span> 도에이 오에도선 아카바네바시역에서 도보 5분, 또는 도쿄메트로 히비야선 카미야초역에서 도보 7분.</div><div class="spot-notes">💡 올라가는 것도 좋지만, 시바공원에서 올려다보는 야경이 더 로맨틱해요. 무료! 조조할인은 없지만 밤이 분위기 최고.</div><div class="spot-notes">도쿄의 상징. 밤에 조명이 켜진 타워를 배경으로 커플 사진 필수!</div><div class="spot-actions"><a class="btn-map btn-map-primary" href="https://www.google.com/maps/search/?api=1&query=%E6%9D%B1%E4%BA%AC%E3%82%BF%E3%83%AF%E3%83%BC" target="_blank" rel="noopener" onclick="event.stopPropagation()">📍 Google Maps</a><a class="btn-map btn-map-secondary" href="https://www.google.com/maps/dir/?api=1&destination=%E6%9D%B1%E4%BA%AC%E3%82%BF%E3%83%AF%E3%83%BC&travelmode=walking" target="_blank" rel="noopener" onclick="event.stopPropagation()">🧭 길찾기</a></div></div></div><div class="spot-card" data-cat="attraction" data-idx="22" onclick="toggleSpot(this, 22)"><div class="spot-card-header"><div class="spot-icon" style="background:#2ECC7118">⛩️</div><div class="spot-info"><div class="spot-name">우에노공원 & 아메요코</div><div class="spot-name-en">上野公園 & アメ横</div><div class="spot-tags"><span class="spot-type" style="background:#2ECC7118;color:#2ECC71">공원/시장</span><span class="spot-distance">🏨 5.6km</span></div></div></div><div class="spot-detail" style="display:none" id="spotDetail22"><div class="spot-detail-row"><span class="icon">💰</span> 무료 (아메요코 쇼핑·간식 별도) (0원)</div><div class="spot-detail-row"><span class="icon">🕐</span> 공원 24시간 / 아메요코 10:00~19:00</div><div class="spot-detail-row"><span class="icon">📍</span> 우에노</div><div class="spot-detail-row"><span class="icon">🏠</span> 東京都台東区上野公園5-20 (우에노공원) / 東京都台東区上野4丁目 (아메요코)</div><div class="spot-detail-row"><span class="icon">📞</span> <a href="tel:+81338285644" style="color:var(--text-secondary);text-decoration:none">+81-3-3828-5644</a></div><div class="spot-detail-row"><span class="icon">🚶</span> JR 우에노역 공원 출구에서 바로.</div><div class="spot-notes">💡 아메요코에서 1,000엔 해산물 덮밥, 500엔 멜론 반쪽 등 먹거리 가성비 최고! 4월 초순이면 벚꽃 아래 도시락 먹기 추천.</div><div class="spot-notes">4월이면 벚꽃 명소! 공원 산책 후 아메요코 시장에서 길거리 음식과 쇼핑 즐기기.</div><div class="spot-actions"><a class="btn-map btn-map-primary" href="https://www.google.com/maps/search/?api=1&query=%E4%B8%8A%E9%87%8E%E5%85%AC%E5%9C%92%20%26%20%E3%82%A2%E3%83%A1%E6%A8%AA" target="_blank" rel="noopener" onclick="event.stopPropagation()">📍 Google Maps</a><a class="btn-map btn-map-secondary" href="https://www.google.com/maps/dir/?api=1&destination=%E4%B8%8A%E9%87%8E%E5%85%AC%E5%9C%92%20%26%20%E3%82%A2%E3%83%A1%E6%A8%AA&travelmode=walking" target="_blank" rel="noopener" onclick="event.stopPropagation()">🧭 길찾기</a></div></div></div><div class="spot-card" data-cat="experience" data-idx="23" onclick="toggleSpot(this, 23)"><div class="spot-card-header"><div class="spot-icon" style="background:#7B68EE18">🎨</div><div class="spot-info"><div class="spot-name">팀랩 보더리스 (아자부다이힐스)</div><div class="spot-name-en">チームラボボーダレス 麻布台ヒルズ</div><div class="spot-tags"><span class="spot-type" style="background:#7B68EE18;color:#7B68EE">디지털아트</span><span class="spot-distance">🏨 1.9km</span></div></div></div><div class="spot-detail" style="display:none" id="spotDetail23"><div class="spot-detail-row"><span class="icon">💰</span> 3,800엔 (사전예약) (약 33,800원)</div><div class="spot-detail-row"><span class="icon">🕐</span> 10:00~21:00 (요일별 상이)</div><div class="spot-detail-row"><span class="icon">📍</span> 아자부다이</div><div class="spot-detail-row"><span class="icon">🏠</span> 東京都港区麻布台1-2-4 麻布台ヒルズ ガーデンプラザB B1F</div><div class="spot-detail-row"><span class="icon">📞</span> <a href="tel:+81362309666" style="color:var(--text-secondary);text-decoration:none">+81-3-6230-9666</a></div><div class="spot-detail-row"><span class="icon">🚶</span> 도쿄메트로 히비야선 카미야초역 직결. 아자부다이힐스 가든플라자 B1.</div><div class="spot-notes">💡 사전 온라인 예매 필수! 당일 매진이 흔해요. 어두운 단색 옷 입으면 작품이 몸에 투영되어 더 예뻐요. 소요시간 약 2시간.</div><div class="spot-notes">몰입형 디지털 아트 뮤지엄. 커플이 함께 환상적인 공간에서 사진 찍기에 최고!</div><div class="spot-actions"><a class="btn-map btn-map-primary" href="https://www.google.com/maps/search/?api=1&query=%E3%83%81%E3%83%BC%E3%83%A0%E3%83%A9%E3%83%9C%E3%83%9C%E3%83%BC%E3%83%80%E3%83%AC%E3%82%B9%20%E9%BA%BB%E5%B8%83%E5%8F%B0%E3%83%92%E3%83%AB%E3%82%BA" target="_blank" rel="noopener" onclick="event.stopPropagation()">📍 Google Maps</a><a class="btn-map btn-map-secondary" href="https://www.google.com/maps/dir/?api=1&destination=%E3%83%81%E3%83%BC%E3%83%A0%E3%83%A9%E3%83%9C%E3%83%9C%E3%83%BC%E3%83%80%E3%83%AC%E3%82%B9%20%E9%BA%BB%E5%B8%83%E5%8F%B0%E3%83%92%E3%83%AB%E3%82%BA&travelmode=walking" target="_blank" rel="noopener" onclick="event.stopPropagation()">🧭 길찾기</a></div></div></div><div class="spot-card" data-cat="experience" data-idx="24" onclick="toggleSpot(this, 24)"><div class="spot-card-header"><div class="spot-icon" style="background:#7B68EE18">🎨</div><div class="spot-info"><div class="spot-name">츠키지 외시장 먹방투어</div><div class="spot-name-en">築地場外市場 食べ歩き</div><div class="spot-tags"><span class="spot-type" style="background:#7B68EE18;color:#7B68EE">먹방투어</span><span class="spot-distance">🏨 1.0km</span></div></div></div><div class="spot-detail" style="display:none" id="spotDetail24"><div class="spot-detail-row"><span class="icon">💰</span> 2,000~3,000엔 (여러 가지 조금씩) (약 17,800~26,700원)</div><div class="spot-detail-row"><span class="icon">🕐</span> 07:00~14:00 (오후에는 닫는 가게 많음)</div><div class="spot-detail-row"><span class="icon">📍</span> 츠키지</div><div class="spot-detail-row"><span class="icon">🏠</span> 東京都中央区築地4-16-2 (츠키지 외시장 안내소)</div><div class="spot-detail-row"><span class="icon">📞</span> <a href="tel:+81335419444" style="color:var(--text-secondary);text-decoration:none">+81-3-3541-9444</a></div><div class="spot-detail-row"><span class="icon">🚶</span> 도쿄메트로 히비야선 츠키지역 1번 출구에서 도보 3분.</div><div class="spot-notes">💡 아침에 가야 가게가 다 열려있어요! 다마고야키(계란말이), 운니(성게) 군함, 멜론빵, 호타테(관자) 꼬치가 필수 먹거리.</div><div class="spot-notes">츠키지 외시장을 돌며 다마고야키, 해산물 꼬치, 딸기 다이후쿠 등 다양한 길거리 음식 체험.</div><div class="spot-actions"><a class="btn-map btn-map-primary" href="https://www.google.com/maps/search/?api=1&query=%E7%AF%89%E5%9C%B0%E5%A0%B4%E5%A4%96%E5%B8%82%E5%A0%B4%20%E9%A3%9F%E3%81%B9%E6%AD%A9%E3%81%8D" target="_blank" rel="noopener" onclick="event.stopPropagation()">📍 Google Maps</a><a class="btn-map btn-map-secondary" href="https://www.google.com/maps/dir/?api=1&destination=%E7%AF%89%E5%9C%B0%E5%A0%B4%E5%A4%96%E5%B8%82%E5%A0%B4%20%E9%A3%9F%E3%81%B9%E6%AD%A9%E3%81%8D&travelmode=walking" target="_blank" rel="noopener" onclick="event.stopPropagation()">🧭 길찾기</a></div></div></div><div class="spot-card" data-cat="shopping" data-idx="25" onclick="toggleSpot(this, 25)"><div class="spot-card-header"><div class="spot-icon" style="background:#FF69B418">🛍</div><div class="spot-info"><div class="spot-name">돈키호테 시부야점</div><div class="spot-name-en">ドン・キホーテ 渋谷本店</div><div class="spot-tags"><span class="spot-type" style="background:#FF69B418;color:#FF69B4">잡화/면세</span><span class="spot-distance">🏨 5.5km</span></div></div></div><div class="spot-detail" style="display:none" id="spotDetail25"><div class="spot-detail-row"><span class="icon">💰</span> 5,000~10,000엔 (약 44,500~89,000원)</div><div class="spot-detail-row"><span class="icon">🕐</span> 24시간</div><div class="spot-detail-row"><span class="icon">📍</span> 시부야</div><div class="spot-detail-row"><span class="icon">🏠</span> 東京都渋谷区宇田川町28-6</div><div class="spot-detail-row"><span class="icon">📞</span> <a href="tel:+81354284086" style="color:var(--text-secondary);text-decoration:none">+81-3-5428-4086</a></div><div class="spot-detail-row"><span class="icon">🚶</span> JR 시부야역 하치코 출구에서 도보 5분. 센터가이 끝자락.</div><div class="spot-notes">💡 여권 가져가면 면세(Tax Free) 가능! 과자·약·화장품 등 한국보다 저렴한 품목이 많아요. 쇼핑은 마지막 날 짐 정리 전에!</div><div class="spot-notes">과자, 화장품, 약, 기념품을 한 곳에서! 5,000엔 이상 면세 가능.</div><div class="spot-actions"><a class="btn-map btn-map-primary" href="https://www.google.com/maps/search/?api=1&query=%E3%83%89%E3%83%B3%E3%83%BB%E3%82%AD%E3%83%9B%E3%83%BC%E3%83%86%20%E6%B8%8B%E8%B0%B7%E6%9C%AC%E5%BA%97" target="_blank" rel="noopener" onclick="event.stopPropagation()">📍 Google Maps</a><a class="btn-map btn-map-secondary" href="https://www.google.com/maps/dir/?api=1&destination=%E3%83%89%E3%83%B3%E3%83%BB%E3%82%AD%E3%83%9B%E3%83%BC%E3%83%86%20%E6%B8%8B%E8%B0%B7%E6%9C%AC%E5%BA%97&travelmode=walking" target="_blank" rel="noopener" onclick="event.stopPropagation()">🧭 길찾기</a></div></div></div></div></div></div>
+<div class="page" data-page="2"><div class="page-inner">
+  <div class="day-hero" style="border-left:3px solid #E84545">
+    <div class="day-number" style="color:#E84545">Day 1 (도착일)</div>
+    <div class="day-theme">도쿄 도착 + 시부야 야경</div>
+    <div class="day-cost-badge">💰 약 108,400원 (항공권 제외)</div>
+    <div class="day-tip">💡 비행 후 피곤하니 무리하지 마세요! 편한 운동화, 가벼운 자켓. 공항에서 Suica 구매 + 엔화 확인. 시부야 중심으로 가볍게.</div>
+  </div><div class="timeline"><div class="time-block"><div class="time-marker"><div class="time-dot" style="background:#E84545"></div><div class="time-label">09:00</div></div><div class="time-content"><div class="place-name">인천공항 출발</div><div class="description">인천공항 → 나리타공항 (약 2시간 30분 비행)</div><div class="detail-tags"><span class="dtag dtag-cost">💰 항공권 별도 (왕복 약 250,000~400,000원 (LCC 기준))</span></div></div></div><div class="time-block"><div class="time-marker"><div class="time-dot" style="background:#E84545"></div><div class="time-label">12:00 (현지시각)</div></div><div class="time-content"><div class="place-name">나리타공항 도착 → 미츠이 가든 호텔 긴자 프리미어</div><div class="description">입국심사 + 짐 수령 후, 게이세이 액세스 특급으로 시내 이동. 공항 JR 카운터에서 Suica 카드 구매하세요! 아사쿠사에서 도쿄메트로 긴자선으로 환승하여 신바시역 하차, 도보 5분으로 호텔 도착.</div><div class="detail-tags"><span class="dtag dtag-transport">🚃 나리타공항 → 게이세이 액세스 특급 → 아사쿠사역 (약 60분, 1,270엔) → 도쿄메트로 긴자선 → 신바시역 (약 15분, 210엔) → 도보 5분 <a href="https://www.google.com/maps/search/?api=1&query=%E6%88%90%E7%94%B0%E7%A9%BA%E6%B8%AF%E7%AC%AC1%E3%82%BF%E3%83%BC%E3%83%9F%E3%83%8A%E3%83%AB%20B1F%20%E4%BA%AC%E6%88%90%E7%B7%9A%E6%94%B9%E6%9C%AD%E5%8F%A3%20%20%E2%86%92%20%E6%B5%85%E8%8D%89%E9%A7%85%E4%B9%97%E3%82%8A%E6%8F%9B%E3%81%88%20%E6%9D%B1%E4%BA%AC%E3%83%A1%E3%83%88%E3%83%AD%E9%8A%80%E5%BA%A7%E7%B7%9A%20%E2%86%92%20%E6%96%B0%E6%A9%8B%E9%A7%85%203" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;margin-left:4px">탑승위치</a></span><span class="dtag dtag-hotel">🏨 호텔에서 나리타공항에서 약 75분 (전철 환승 포함)</span><span class="dtag dtag-cost">💰 1,480엔 (공항→호텔) (약 13,200원)</span></div></div></div><div class="time-block"><div class="time-marker"><div class="time-dot" style="background:#E84545"></div><div class="time-label">14:00</div></div><div class="time-content"><div class="place-name">미츠이 가든 호텔 긴자 프리미어 체크인</div><a class="place-meta-link" href="https://www.google.com/maps/search/?api=1&query=%E9%8A%80%E5%BA%A7%20%E3%81%8B%E3%81%A4%E3%81%8B%E3%81%BF" target="_blank" rel="noopener">📍 지도 보기</a><div class="description">호텔에 짐을 맡기고 가볍게 출발! 고층 객실에서 도쿄타워 뷰를 확인하세요. 체크인이 15시인 경우 프론트에 짐만 맡기고 나가도 돼요.</div><div class="detail-tags"><span class="dtag dtag-hotel">🏨 호텔에서 호텔 (三井ガーデンホテル銀座プレミア)</span><span class="dtag dtag-cost">💰 0엔 (0원)</span></div></div></div><div class="time-block"><div class="time-marker"><div class="time-dot" style="background:#E84545"></div><div class="time-label">14:30</div></div><div class="time-content"><div class="place-name">🍜 늦은 점심: 이치란 라멘 시부야점</div><a class="place-meta-link" href="https://www.google.com/maps/search/?api=1&query=%E4%B8%80%E8%98%AD%20%E6%B8%8B%E8%B0%B7%E5%BA%97" target="_blank" rel="noopener">📍 지도 보기</a><div class="description">도착 첫 끼니는 역시 라멘! 24시간 영업이라 시간 부담 없고, 커플석 요청하면 나란히 앉을 수 있어요. 맛 조절 종이에 취향 적는 재미도 쏠쏠.</div><div class="detail-tags"><span class="dtag dtag-transport">🚃 호텔 → 도보 5분 신바시역 → JR 야마노테선 → 시부야역 (약 15분, 200엔)</span><span class="dtag dtag-hotel">🏨 호텔에서 지하철 20분, 약 6km</span><span class="dtag dtag-cost">💰 1,200엔 × 2명 = 2,400엔 (약 21,400원)</span></div></div></div><div class="time-block"><div class="time-marker"><div class="time-dot" style="background:#E84545"></div><div class="time-label">15:30</div></div><div class="time-content"><div class="place-name">시부야 산책: 하치코 동상 & 스크램블 교차로</div><a class="place-meta-link" href="https://www.google.com/maps/search/?api=1&query=%E6%B8%8B%E8%B0%B7%E3%82%B9%E3%82%AF%E3%83%A9%E3%83%B3%E3%83%96%E3%83%AB%E4%BA%A4%E5%B7%AE%E7%82%B9%20%26%20SHIBUYA%20SKY" target="_blank" rel="noopener">📍 지도 보기</a><div class="description">시부야의 상징 하치코 동상에서 커플 인증샷! 스크램블 교차로에서 수천 명이 한꺼번에 건너는 모습 체험. 스타벅스 2층에서 내려다보는 뷰도 멋져요.</div><div class="detail-tags"><span class="dtag dtag-transport">🚃 이치란에서 도보 5분</span><span class="dtag dtag-hotel">🏨 호텔에서 지하철 20분, 약 6km</span><span class="dtag dtag-cost">💰 0엔 (스타벅스 음료 별도) (0원)</span></div></div></div><div class="time-block"><div class="time-marker"><div class="time-dot" style="background:#E84545"></div><div class="time-label">17:30</div></div><div class="time-content"><div class="place-name">시부야 스카이 일몰 전망</div><a class="place-meta-link" href="https://www.google.com/maps/search/?api=1&query=%E6%B8%8B%E8%B0%B7%E3%82%B9%E3%82%AF%E3%83%A9%E3%83%B3%E3%83%96%E3%83%AB%E4%BA%A4%E5%B7%AE%E7%82%B9%20%26%20SHIBUYA%20SKY" target="_blank" rel="noopener">📍 지도 보기</a><div class="description">230m 높이의 옥상 전망대에서 도쿄 일몰 + 야경을 한번에! 해가 지는 시간에 맞춰가면 황금빛 도쿄를 볼 수 있어요. 사전 예약 필수!</div><div class="detail-tags"><span class="dtag dtag-transport">🚃 시부야역에서 도보 1분 (스크램블 스퀘어 14F) <a href="https://www.google.com/maps/search/?api=1&query=%E6%B8%8B%E8%B0%B7%E3%82%B9%E3%82%AF%E3%83%A9%E3%83%B3%E3%83%96%E3%83%AB%E3%82%B9%E3%82%AF%E3%82%A8%E3%82%A2%2014F%20SHIBUYA%20SKY%E5%85%A5%E5%8F%A3" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;margin-left:4px">탑승위치</a></span><span class="dtag dtag-hotel">🏨 호텔에서 지하철 20분, 약 6km</span><span class="dtag dtag-cost">💰 1,800엔 × 2명 = 3,600엔 (사전예약가) (약 32,000원)</span></div></div></div><div class="time-block"><div class="time-marker"><div class="time-dot" style="background:#E84545"></div><div class="time-label">19:30</div></div><div class="time-content"><div class="place-name">🍢 저녁: 오모이데요코초 야키토리</div><a class="place-meta-link" href="https://www.google.com/maps/search/?api=1&query=%E6%80%9D%E3%81%84%E5%87%BA%E6%A8%AA%E4%B8%81" target="_blank" rel="noopener">📍 지도 보기</a><div class="description">신주쿠로 이동해서 추억의 골목(思い出横丁)에서 야키토리와 하이볼! 좁은 골목의 네온 불빛 아래 현지인과 어깨 부딪히며 먹는 분위기가 최고예요.</div><div class="detail-tags"><span class="dtag dtag-transport">🚃 시부야역 → JR 야마노테선 → 신주쿠역 (5분, 170엔) → 서쪽출구 도보 2분 <a href="https://www.google.com/maps/search/?api=1&query=%E6%B8%8B%E8%B0%B7%E9%A7%85%20JR%E5%B1%B1%E6%89%8B%E7%B7%9A%E5%A4%96%E5%9B%9E%E3%82%8A%E3%83%9B%E3%83%BC%E3%83%A0" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;margin-left:4px">탑승위치</a></span><span class="dtag dtag-hotel">🏨 호텔에서 지하철 25분, 약 8km</span><span class="dtag dtag-cost">💰 2,000엔 × 2명 = 4,000엔 (약 35,600원)</span></div></div></div><div class="time-block"><div class="time-marker"><div class="time-dot" style="background:#E84545"></div><div class="time-label">21:00</div></div><div class="time-content"><div class="place-name">신주쿠 야경 산책 → 호텔 복귀</div><div class="description">가부키초 네온거리 구경하며 산책. 피곤하면 바로 호텔로! 편의점에서 내일 아침 간식 사두면 좋아요.</div><div class="detail-tags"><span class="dtag dtag-transport">🚃 신주쿠역 → JR 야마노테선 → 신바시역 (약 20분, 200엔) → 도보 5분 호텔</span><span class="dtag dtag-hotel">🏨 호텔에서 지하철 25분, 약 8km</span><span class="dtag dtag-cost">💰 교통비 약 200엔 + 편의점 약 500엔 (약 6,200원)</span></div></div></div></div></div></div>
+<div class="page" data-page="3"><div class="page-inner">
+  <div class="day-hero" style="border-left:3px solid #4A90D9">
+    <div class="day-number" style="color:#4A90D9">Day 2</div>
+    <div class="day-theme">츠키지 아침 + 긴자 런치 + 아사쿠사 오후</div>
+    <div class="day-cost-badge">💰 약 229,300원</div>
+    <div class="day-tip">💡 오늘은 걷기 많은 날! 편한 운동화 필수. 현금 많이 쓰는 곳(츠키지, 아사쿠사)이니 2만엔 이상 현금 준비. 접이식 우산도 챙기세요.</div>
+  </div><div class="timeline"><div class="time-block"><div class="time-marker"><div class="time-dot" style="background:#4A90D9"></div><div class="time-label">07:30</div></div><div class="time-content"><div class="place-name">🐟 아침: 츠키지 외시장 먹방투어</div><a class="place-meta-link" href="https://www.google.com/maps/search/?api=1&query=%E7%AF%89%E5%9C%B0%E5%A0%B4%E5%A4%96%E5%B8%82%E5%A0%B4%20%E9%A3%9F%E3%81%B9%E6%AD%A9%E3%81%8D" target="_blank" rel="noopener">📍 지도 보기</a><div class="description">아침부터 츠키지 외시장에서 먹방 스타트! 다마고야키(계란말이), 호타테(관자) 꼬치, 운니 군함, 딸기 다이후쿠... 조금씩 여러 개 사서 나눠 먹는 재미가 있어요. 아침 일찍 가야 줄이 짧아요!</div><div class="detail-tags"><span class="dtag dtag-transport">🚃 호텔 → 도보 5분 신바시역 → 도쿄메트로 긴자선 → 긴자역 환승 히비야선 → 츠키지역 (약 10분, 170엔) → 도보 3분 <a href="https://www.google.com/maps/search/?api=1&query=%E7%AF%89%E5%9C%B0%E9%A7%85%201%E7%95%AA%E5%87%BA%E5%8F%A3" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;margin-left:4px">탑승위치</a></span><span class="dtag dtag-hotel">🏨 호텔에서 지하철 10분, 약 1.5km</span><span class="dtag dtag-cost">💰 2,500엔 × 2명 = 5,000엔 (약 44,500원)</span></div></div></div><div class="time-block"><div class="time-marker"><div class="time-dot" style="background:#4A90D9"></div><div class="time-label">09:30</div></div><div class="time-content"><div class="place-name">🍣 브런치: 츠키지 스시다이</div><a class="place-meta-link" href="https://www.google.com/maps/search/?api=1&query=%E7%AF%89%E5%9C%B0%E3%81%99%E3%81%97%E5%A4%A7" target="_blank" rel="noopener">📍 지도 보기</a><div class="description">아직 배에 여유 있다면 오마카세 스시 도전! 셰프가 하나씩 쥐어주는 10관 세트가 감동적이에요. 배가 차면 패스하고 몬자야키로!</div><div class="detail-tags"><span class="dtag dtag-transport">🚃 츠키지 외시장 내 도보 3분</span><span class="dtag dtag-hotel">🏨 호텔에서 지하철 10분, 약 1.5km</span><span class="dtag dtag-cost">💰 4,000엔 × 2명 = 8,000엔 (약 71,200원)</span></div></div></div><div class="time-block"><div class="time-marker"><div class="time-dot" style="background:#4A90D9"></div><div class="time-label">11:00</div></div><div class="time-content"><div class="place-name">몬자야키 체험 (선택)</div><a class="place-meta-link" href="https://www.google.com/maps/search/?api=1&query=%E3%82%82%E3%82%93%E3%81%98%E3%82%83%E8%BF%91%E3%81%A9%E3%81%86" target="_blank" rel="noopener">📍 지도 보기</a><div class="description">스시를 건너뛰었다면 츠키시마로 이동해서 몬자야키! 도쿄 로컬 음식을 커플이 함께 만들어 먹는 재미. 츠키지에서 도보 15분 거리.</div><div class="detail-tags"><span class="dtag dtag-transport">🚃 츠키지 → 도보 15분 또는 도에이 오에도선 1정거장 → 츠키시마역 <a href="https://www.google.com/maps/search/?api=1&query=%E7%AF%89%E5%9C%B0%E5%B8%82%E5%A0%B4%E9%A7%85%20%E9%83%BD%E5%96%B6%E5%A4%A7%E6%B1%9F%E6%88%B8%E7%B7%9A%E3%83%9B%E3%83%BC%E3%83%A0%20%E2%86%92%20%E6%9C%88%E5%B3%B6%E9%A7%85%207%E7%95%AA%E5%87%BA%E5%8F%A3" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;margin-left:4px">탑승위치</a></span><span class="dtag dtag-hotel">🏨 호텔에서 지하철 15분, 약 2.5km</span><span class="dtag dtag-cost">💰 2,000엔 × 2명 = 4,000엔 (선택 시) (약 35,600원 (선택 시))</span></div></div></div><div class="time-block"><div class="time-marker"><div class="time-dot" style="background:#4A90D9"></div><div class="time-label">12:30</div></div><div class="time-content"><div class="place-name">🍤 점심: 텐동 카네코 한노스케</div><a class="place-meta-link" href="https://www.google.com/maps/search/?api=1&query=%E5%A4%A9%E4%B8%BC%20%E9%87%91%E5%AD%90%E5%8D%8A%E4%B9%8B%E5%8A%A9%20%E6%97%A5%E6%9C%AC%E6%A9%8B%E6%9C%AC%E5%BA%97" target="_blank" rel="noopener">📍 지도 보기</a><div class="description">니혼바시의 전설적 가성비 텐동! 980엔에 밥 위에 거대한 새우·오징어·반숙달걀 튀김이 넘쳐요. 오후 시간대라 대기 짧을 거예요.</div><div class="detail-tags"><span class="dtag dtag-transport">🚃 츠키지/츠키시마 → 도쿄메트로 → 미츠코시마에역 (약 15분) → 도보 3분 <a href="https://www.google.com/maps/search/?api=1&query=%E4%B8%89%E8%B6%8A%E5%89%8D%E9%A7%85%20A1%E5%87%BA%E5%8F%A3" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;margin-left:4px">탑승위치</a></span><span class="dtag dtag-hotel">🏨 호텔에서 지하철 15분, 약 4km</span><span class="dtag dtag-cost">💰 980엔 × 2명 = 1,960엔 (약 17,400원)</span></div></div></div><div class="time-block"><div class="time-marker"><div class="time-dot" style="background:#4A90D9"></div><div class="time-label">14:00</div></div><div class="time-content"><div class="place-name">☕ 카페 타임 + 니혼바시 산책</div><a class="place-meta-link" href="https://www.google.com/maps/search/?api=1&query=%E2%98%95%20%EC%B9%B4%ED%8E%98%20%ED%83%80%EC%9E%84%20%2B%20%EB%8B%88%ED%98%BC%EB%B0%94%EC%8B%9C%20%EC%82%B0%EC%B1%85" target="_blank" rel="noopener">📍 지도 보기</a><div class="description">니혼바시 코레도 무로마치 주변 카페에서 커피 한잔. 일본 전통과 현대가 어우러진 거리를 천천히 산책하세요.</div><div class="detail-tags"><span class="dtag dtag-hotel">🏨 호텔에서 지하철 15분, 약 4km</span><span class="dtag dtag-cost">💰 800엔 × 2명 = 1,600엔 (약 14,200원)</span></div></div></div><div class="time-block"><div class="time-marker"><div class="time-dot" style="background:#4A90D9"></div><div class="time-label">15:30</div></div><div class="time-content"><div class="place-name">⛩️ 아사쿠사 센소지 & 나카미세 거리</div><a class="place-meta-link" href="https://www.google.com/maps/search/?api=1&query=%E6%B5%85%E8%8D%89%E5%AF%BA" target="_blank" rel="noopener">📍 지도 보기</a><div class="description">카미나리몬 대등롱 앞에서 커플 사진 필수! 나카미세 거리에서 닌교야키·아게만주 등 간식도 즐기고, 센소지 경내에서 오미쿠지(제비뽑기) 한 장씩 뽑아보세요.</div><div class="detail-tags"><span class="dtag dtag-transport">🚃 미츠코시마에역 → 도쿄메트로 긴자선 → 아사쿠사역 (약 15분, 210엔) <a href="https://www.google.com/maps/search/?api=1&query=%E4%B8%89%E8%B6%8A%E5%89%8D%E9%A7%85%20%E6%9D%B1%E4%BA%AC%E3%83%A1%E3%83%88%E3%83%AD%E9%8A%80%E5%BA%A7%E7%B7%9A%E3%83%9B%E3%83%BC%E3%83%A0%20%E2%86%92%20%E6%B5%85%E8%8D%89%E9%A7%85%201%E7%95%AA%E5%87%BA%E5%8F%A3" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;margin-left:4px">탑승위치</a></span><span class="dtag dtag-hotel">🏨 호텔에서 지하철 20분, 약 5km</span><span class="dtag dtag-cost">💰 간식 500엔 × 2 + 오미쿠지 100엔 × 2 = 1,200엔 (약 10,700원)</span></div></div></div><div class="time-block"><div class="time-marker"><div class="time-dot" style="background:#4A90D9"></div><div class="time-label">17:30</div></div><div class="time-content"><div class="place-name">아사쿠사 주변 산책</div><div class="description">스카이트리가 보이는 스미다강변 산책. 4월이면 강변 벚꽃이 아름다워요! 아사쿠사에서 스카이트리까지 도보 20분.</div><div class="detail-tags"><span class="dtag dtag-hotel">🏨 호텔에서 지하철 20분, 약 5km</span><span class="dtag dtag-cost">💰 0엔 (0원)</span></div></div></div><div class="time-block"><div class="time-marker"><div class="time-dot" style="background:#4A90D9"></div><div class="time-label">19:00</div></div><div class="time-content"><div class="place-name">🍖 저녁: 나카메구로 야키니쿠</div><a class="place-meta-link" href="https://www.google.com/maps/search/?api=1&query=%E6%A1%83%E5%A4%A9%E5%85%90%20%E4%B8%AD%E7%9B%AE%E9%BB%92%E5%BA%97" target="_blank" rel="noopener">📍 지도 보기</a><div class="description">나카메구로로 이동! 4월이면 메구로강 벚꽃길이 라이트업되어 산책하기 완벽. 벚꽃 산책 후 야키니쿠로 마무리하는 로맨틱 코스.</div><div class="detail-tags"><span class="dtag dtag-transport">🚃 아사쿠사역 → 도쿄메트로 긴자선 → 우에노 환승 → 히비야선 나카메구로역 (약 35분, 250엔) <a href="https://www.google.com/maps/search/?api=1&query=%E6%B5%85%E8%8D%89%E9%A7%85%20%E6%9D%B1%E4%BA%AC%E3%83%A1%E3%83%88%E3%83%AD%E9%8A%80%E5%BA%A7%E7%B7%9A%E3%83%9B%E3%83%BC%E3%83%A0%20%E2%86%92%20%E4%B8%8A%E9%87%8E%E9%A7%85%E4%B9%97%E3%82%8A%E6%8F%9B%E3%81%88%20%E2%86%92%20%E6%97%A5%E6%AF%94%E8%B0%B7%E7%B7%9A%20%E4%B8%AD%E7%9B%AE%E9%BB%92%E9%A7%85" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;margin-left:4px">탑승위치</a></span><span class="dtag dtag-hotel">🏨 호텔에서 지하철 25분, 약 7km</span><span class="dtag dtag-cost">💰 4,000엔 × 2명 = 8,000엔 (약 71,200원)</span></div></div></div><div class="time-block"><div class="time-marker"><div class="time-dot" style="background:#4A90D9"></div><div class="time-label">21:00</div></div><div class="time-content"><div class="place-name">메구로강 벚꽃 야경 산책 → 호텔</div><div class="description">밤의 메구로강 벚꽃 라이트업은 정말 환상적이에요. 커플 최고의 산책 코스! 느긋하게 걸으며 하루를 마무리.</div><div class="detail-tags"><span class="dtag dtag-transport">🚃 나카메구로역 → 도쿄메트로 히비야선 → 긴자역 환승 → 신바시역 (약 20분, 200엔) → 도보 5분 호텔 <a href="https://www.google.com/maps/search/?api=1&query=%E4%B8%AD%E7%9B%AE%E9%BB%92%E9%A7%85%20%E6%9D%B1%E4%BA%AC%E3%83%A1%E3%83%88%E3%83%AD%E6%97%A5%E6%AF%94%E8%B0%B7%E7%B7%9A" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;margin-left:4px">탑승위치</a></span><span class="dtag dtag-hotel">🏨 호텔에서 지하철 25분, 약 7km</span><span class="dtag dtag-cost">💰 교통비 약 200엔 (약 1,800원)</span></div></div></div></div></div></div>
+<div class="page" data-page="4"><div class="page-inner">
+  <div class="day-hero" style="border-left:3px solid #2ECC71">
+    <div class="day-number" style="color:#2ECC71">Day 3</div>
+    <div class="day-theme">하라주쿠 + 다이칸야마 + 팀랩 + 도쿄타워 야경</div>
+    <div class="day-cost-badge">💰 약 198,500~219,900원</div>
+    <div class="day-tip">💡 오늘은 감성 데이트 코스! 사진 많이 찍을 테니 보조배터리 필수. 팀랩 보더리스는 어두운 단색 옷 입으면 작품이 몸에 투영돼서 더 예뻐요.</div>
+  </div><div class="timeline"><div class="time-block"><div class="time-marker"><div class="time-dot" style="background:#2ECC71"></div><div class="time-label">09:00</div></div><div class="time-content"><div class="place-name">⛩️ 메이지진구 아침 산책</div><a class="place-meta-link" href="https://www.google.com/maps/search/?api=1&query=%E6%98%8E%E6%B2%BB%E7%A5%9E%E5%AE%AE" target="_blank" rel="noopener">📍 지도 보기</a><div class="description">도심 속 숲길을 걸으며 상쾌한 아침! 커플 에마(소원 그림판)에 소원을 적어보세요. 참배 방법도 안내판에 그림으로 나와 있어서 따라하기 쉬워요.</div><div class="detail-tags"><span class="dtag dtag-transport">🚃 호텔 → 도보 5분 신바시역 → JR 야마노테선 → 하라주쿠역 (약 15분, 200엔) → 도보 1분 <a href="https://www.google.com/maps/search/?api=1&query=JR%E5%8E%9F%E5%AE%BF%E9%A7%85%20%E8%A1%A8%E5%8F%82%E9%81%93%E5%8F%A3%20%EB%98%90%EB%8A%94%20%E6%98%8E%E6%B2%BB%E7%A5%9E%E5%AE%AE%E5%89%8D%E9%A7%85%202%E7%95%AA%E5%87%BA%E5%8F%A3" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;margin-left:4px">탑승위치</a></span><span class="dtag dtag-hotel">🏨 호텔에서 지하철 20분, 약 5km</span><span class="dtag dtag-cost">💰 에마 500엔 × 1(커플이니 하나에 같이!) = 500엔 (약 4,500원)</span></div></div></div><div class="time-block"><div class="time-marker"><div class="time-dot" style="background:#2ECC71"></div><div class="time-label">10:30</div></div><div class="time-content"><div class="place-name">하라주쿠 다케시타 거리 간식</div><a class="place-meta-link" href="https://www.google.com/maps/search/?api=1&query=%ED%95%98%EB%9D%BC%EC%A3%BC%EC%BF%A0%20%EB%8B%A4%EC%BC%80%EC%8B%9C%ED%83%80%20%EA%B1%B0%EB%A6%AC%20%EA%B0%84%EC%8B%9D" target="_blank" rel="noopener">📍 지도 보기</a><div class="description">메이지진구에서 나와 다케시타 거리로! 크레이프, 솜사탕, 치즈핫도그 등 귀여운 간식들. 구경하는 재미도 쏠쏠.</div><div class="detail-tags"><span class="dtag dtag-transport">🚃 메이지진구 → 도보 5분 → 다케시타 거리</span><span class="dtag dtag-hotel">🏨 호텔에서 지하철 20분, 약 5km</span><span class="dtag dtag-cost">💰 1,000엔 × 2명 = 2,000엔 (약 17,800원)</span></div></div></div><div class="time-block"><div class="time-marker"><div class="time-dot" style="background:#2ECC71"></div><div class="time-label">11:30</div></div><div class="time-content"><div class="place-name">🥩 점심: 규카츠 (긴자 or 하라주쿠 근처)</div><a class="place-meta-link" href="https://www.google.com/maps/search/?api=1&query=%E3%81%92%E3%82%93%E3%81%8B%E3%81%A4%20%E9%8A%80%E5%BA%A7%E5%BA%97" target="_blank" rel="noopener">📍 지도 보기</a><div class="description">겉바속촉 규카츠! 레어로 나온 소고기 카츠를 돌판에 올려 원하는 만큼 익혀 먹는 재미. 와사비+소금, 데미글라스 소스 등 3가지 맛으로 즐기세요.</div><div class="detail-tags"><span class="dtag dtag-transport">🚃 하라주쿠 → 도쿄메트로 → 긴자역 (약 20분) <a href="https://www.google.com/maps/search/?api=1&query=%E6%98%8E%E6%B2%BB%E7%A5%9E%E5%AE%AE%E5%89%8D%E9%A7%85%20%E6%9D%B1%E4%BA%AC%E3%83%A1%E3%83%88%E3%83%AD%E5%89%AF%E9%83%BD%E5%BF%83%E7%B7%9A%E3%83%9B%E3%83%BC%E3%83%A0%20%E2%86%92%20%E9%8A%80%E5%BA%A7%E9%A7%85%20C2%E5%87%BA%E5%8F%A3" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;margin-left:4px">탑승위치</a></span><span class="dtag dtag-hotel">🏨 호텔에서 도보 10분, 약 0.8km (긴자 선택 시)</span><span class="dtag dtag-cost">💰 1,500엔 × 2명 = 3,000엔 (약 26,700원)</span></div></div></div><div class="time-block"><div class="time-marker"><div class="time-dot" style="background:#2ECC71"></div><div class="time-label">13:00</div></div><div class="time-content"><div class="place-name">☕ 다이칸야마 카페 타임</div><a class="place-meta-link" href="https://www.google.com/maps/search/?api=1&query=%E7%8C%BF%E6%A5%BD%E7%8F%88%E7%90%B2" target="_blank" rel="noopener">📍 지도 보기</a><div class="description">긴자에서 다이칸야마로 이동. 세련된 동네에서 여유로운 커피 타임. 근처 츠타야 서점(T-SITE)도 구경하면 좋아요. 나카메구로까지 산책하기 좋은 동네.</div><div class="detail-tags"><span class="dtag dtag-transport">🚃 긴자역 → 도쿄메트로 히비야선 → 에비스역 환승 → 다이칸야마역 (약 20분, 200엔) <a href="https://www.google.com/maps/search/?api=1&query=%E9%8A%80%E5%BA%A7%E9%A7%85%20%E6%9D%B1%E4%BA%AC%E3%83%A1%E3%83%88%E3%83%AD%E6%97%A5%E6%AF%94%E8%B0%B7%E7%B7%9A%E3%83%9B%E3%83%BC%E3%83%A0%20%E2%86%92%20%E6%81%B5%E6%AF%94%E5%AF%BF%E9%A7%85%E4%B9%97%E3%82%8A%E6%8F%9B%E3%81%88%20%E2%86%92%20%E4%BB%A3%E5%AE%98%E5%B1%B1%E9%A7%85%20%E6%AD%A3%E9%9D%A2%E5%8F%A3" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;margin-left:4px">탑승위치</a></span><span class="dtag dtag-hotel">🏨 호텔에서 지하철 25분, 약 6km</span><span class="dtag dtag-cost">💰 800엔 × 2명 = 1,600엔 (약 14,200원)</span></div></div></div><div class="time-block"><div class="time-marker"><div class="time-dot" style="background:#2ECC71"></div><div class="time-label">14:30</div></div><div class="time-content"><div class="place-name">🍜 에비스 아후리 라멘 (간식 겸)</div><a class="place-meta-link" href="https://www.google.com/maps/search/?api=1&query=AFURI%20%E6%81%B5%E6%AF%94%E5%AF%BF" target="_blank" rel="noopener">📍 지도 보기</a><div class="description">다이칸야마에서 에비스로 도보 이동(10분). 유자시오 라멘은 깔끔해서 오후 간식 겸 가볍게 먹기에도 좋아요. 카운터석에서 나란히!</div><div class="detail-tags"><span class="dtag dtag-transport">🚃 다이칸야마 → 도보 10분 → 에비스</span><span class="dtag dtag-hotel">🏨 호텔에서 지하철 20분, 약 5km</span><span class="dtag dtag-cost">💰 1,200엔 × 2명 = 2,400엔 (약 21,400원)</span></div></div></div><div class="time-block"><div class="time-marker"><div class="time-dot" style="background:#2ECC71"></div><div class="time-label">16:00</div></div><div class="time-content"><div class="place-name">🎨 팀랩 보더리스</div><a class="place-meta-link" href="https://www.google.com/maps/search/?api=1&query=%E3%83%81%E3%83%BC%E3%83%A0%E3%83%A9%E3%83%9C%E3%83%9C%E3%83%BC%E3%83%80%E3%83%AC%E3%82%B9%20%E9%BA%BB%E5%B8%83%E5%8F%B0%E3%83%92%E3%83%AB%E3%82%BA" target="_blank" rel="noopener">📍 지도 보기</a><div class="description">환상적인 디지털 아트 세계! 꽃이 쏟아지고, 폭포가 흐르고, 별이 빛나는 몰입형 공간. 커플 인생샷 보장. 약 2시간 소요.</div><div class="detail-tags"><span class="dtag dtag-transport">🚃 에비스역 → 도쿄메트로 히비야선 → 카미야초역 (약 10분, 170엔) → 아자부다이힐스 직결 <a href="https://www.google.com/maps/search/?api=1&query=%E6%81%B5%E6%AF%94%E5%AF%BF%E9%A7%85%20%E6%9D%B1%E4%BA%AC%E3%83%A1%E3%83%88%E3%83%AD%E6%97%A5%E6%AF%94%E8%B0%B7%E7%B7%9A%E3%83%9B%E3%83%BC%E3%83%A0%20%E2%86%92%20%E7%A5%9E%E8%B0%B7%E7%94%BA%E9%A7%85%20%E7%9B%B4%E7%B5%90%20%E9%BA%BB%E5%B8%83%E5%8F%B0%E3%83%92%E3%83%AB%E3%82%BA" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;margin-left:4px">탑승위치</a></span><span class="dtag dtag-hotel">🏨 호텔에서 지하철 10분, 약 2km</span><span class="dtag dtag-cost">💰 3,800엔 × 2명 = 7,600엔 (약 67,600원)</span></div></div></div><div class="time-block"><div class="time-marker"><div class="time-dot" style="background:#2ECC71"></div><div class="time-label">18:30</div></div><div class="time-content"><div class="place-name">🗼 도쿄타워 & 시바공원 야경</div><a class="place-meta-link" href="https://www.google.com/maps/search/?api=1&query=%E6%9D%B1%E4%BA%AC%E3%82%BF%E3%83%AF%E3%83%BC" target="_blank" rel="noopener">📍 지도 보기</a><div class="description">팀랩에서 나와서 도쿄타워까지 도보 15분! 해질녘 시바공원에서 올려다보는 도쿄타워가 가장 로맨틱. 전망대는 올라가도 좋고, 아래에서 봐도 충분히 예뻐요.</div><div class="detail-tags"><span class="dtag dtag-transport">🚃 아자부다이힐스 → 도보 15분 → 도쿄타워</span><span class="dtag dtag-hotel">🏨 호텔에서 지하철 10분, 약 2km</span><span class="dtag dtag-cost">💰 0엔 (외부 감상) 또는 메인데크 1,200엔 × 2 = 2,400엔 (0원 또는 약 21,400원)</span></div></div></div><div class="time-block"><div class="time-marker"><div class="time-dot" style="background:#2ECC71"></div><div class="time-label">20:00</div></div><div class="time-content"><div class="place-name">🍢 저녁: 유라쿠초 야키토리 골목</div><a class="place-meta-link" href="https://www.google.com/maps/search/?api=1&query=%E3%81%B5%E3%81%8F%E3%82%88%E3%81%97" target="_blank" rel="noopener">📍 지도 보기</a><div class="description">유라쿠초 고가다리 아래 야키토리 골목에서 저녁! 모듬 꼬치와 하이볼 조합이 환상. 고가다리 아래 네온 불빛이 분위기 만점이에요.</div><div class="detail-tags"><span class="dtag dtag-transport">🚃 도쿄타워 → 도에이 미타선 오나리몬역 → 히비야역 환승 → JR 유라쿠초역 (약 15분, 210엔) <a href="https://www.google.com/maps/search/?api=1&query=%E5%BE%A1%E6%88%90%E9%96%80%E9%A7%85%20%E9%83%BD%E5%96%B6%E4%B8%89%E7%94%B0%E7%B7%9A%E3%83%9B%E3%83%BC%E3%83%A0%20%E2%86%92%20%E6%97%A5%E6%AF%94%E8%B0%B7%E9%A7%85%E4%B9%97%E3%82%8A%E6%8F%9B%E3%81%88%20%E2%86%92%20JR%E6%9C%89%E6%A5%BD%E7%94%BA%E9%A7%85%20%E6%97%A5%E6%AF%94%E8%B0%B7%E5%8F%A3" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;margin-left:4px">탑승위치</a></span><span class="dtag dtag-hotel">🏨 호텔에서 도보 10분, 약 0.8km</span><span class="dtag dtag-cost">💰 2,500엔 × 2명 = 5,000엔 (약 44,500원)</span></div></div></div><div class="time-block"><div class="time-marker"><div class="time-dot" style="background:#2ECC71"></div><div class="time-label">21:30</div></div><div class="time-content"><div class="place-name">긴자 야경 산책 → 호텔</div><div class="description">유라쿠초에서 긴자까지 도보 3분. 밤의 긴자 거리는 네온이 화려하고 고급스러운 분위기. 편의점에서 내일 아침 간식 사고 호텔로!</div><div class="detail-tags"><span class="dtag dtag-transport">🚃 유라쿠초/긴자 → 도보 10분 → 호텔</span><span class="dtag dtag-hotel">🏨 호텔에서 도보 10분, 약 0.8km</span><span class="dtag dtag-cost">💰 교통비 0엔 (도보) (0원)</span></div></div></div></div></div></div>
+<div class="page" data-page="5"><div class="page-inner">
+  <div class="day-hero" style="border-left:3px solid #F9A826">
+    <div class="day-number" style="color:#F9A826">Day 4 (출발일)</div>
+    <div class="day-theme">우에노 벚꽃 + 아메요코 + 라멘스트리트 → 공항</div>
+    <div class="day-cost-badge">💰 약 127,700원</div>
+    <div class="day-tip">💡 짐 정리 후 호텔에 맡기거나 코인라커 이용. 공항 3시간 전까지 도착 목표! 면세점 쇼핑 시간도 확보하세요. 남은 엔화 정리는 공항 편의점에서.</div>
+  </div><div class="timeline"><div class="time-block"><div class="time-marker"><div class="time-dot" style="background:#F9A826"></div><div class="time-label">08:00</div></div><div class="time-content"><div class="place-name">미츠이 가든 호텔 긴자 프리미어 체크아웃</div><a class="place-meta-link" href="https://www.google.com/maps/search/?api=1&query=%E9%8A%80%E5%BA%A7%20%E3%81%8B%E3%81%A4%E3%81%8B%E3%81%BF" target="_blank" rel="noopener">📍 지도 보기</a><div class="description">짐을 꾸려서 체크아웃. 캐리어는 호텔에 맡기거나, 도쿄역/우에노역 코인라커(400~700엔)에 보관.</div><div class="detail-tags"><span class="dtag dtag-hotel">🏨 호텔에서 호텔 (三井ガーデンホテル銀座プレミア)</span><span class="dtag dtag-cost">💰 코인라커 700엔 (필요 시) (약 6,200원)</span></div></div></div><div class="time-block"><div class="time-marker"><div class="time-dot" style="background:#F9A826"></div><div class="time-label">09:00</div></div><div class="time-content"><div class="place-name">🌸 우에노공원 벚꽃 산책 + 아메요코</div><a class="place-meta-link" href="https://www.google.com/maps/search/?api=1&query=%E4%B8%8A%E9%87%8E%E5%85%AC%E5%9C%92%20%26%20%E3%82%A2%E3%83%A1%E6%A8%AA" target="_blank" rel="noopener">📍 지도 보기</a><div class="description">4월 초라면 벚꽃이 아직 남아있을지도! 우에노공원에서 마지막 벚꽃 감상. 그 후 아메요코 시장에서 1,000엔 해산물 덮밥, 과일 등 마지막 먹방.</div><div class="detail-tags"><span class="dtag dtag-transport">🚃 호텔 → 도보 5분 신바시역 → JR 야마노테선 → 우에노역 (약 20분, 200엔) <a href="https://www.google.com/maps/search/?api=1&query=JR%E4%B8%8A%E9%87%8E%E9%A7%85%20%E5%85%AC%E5%9C%92%E5%8F%A3" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;margin-left:4px">탑승위치</a></span><span class="dtag dtag-hotel">🏨 호텔에서 지하철 20분, 약 6km</span><span class="dtag dtag-cost">💰 아메요코 간식+덮밥 1,500엔 × 2명 = 3,000엔 (약 26,700원)</span></div></div></div><div class="time-block"><div class="time-marker"><div class="time-dot" style="background:#F9A826"></div><div class="time-label">11:00</div></div><div class="time-content"><div class="place-name">🛍️ 마지막 쇼핑 (돈키호테 or 역 주변)</div><a class="place-meta-link" href="https://www.google.com/maps/search/?api=1&query=%E3%83%89%E3%83%B3%E3%83%BB%E3%82%AD%E3%83%9B%E3%83%BC%E3%83%86%20%E6%B8%8B%E8%B0%B7%E6%9C%AC%E5%BA%97" target="_blank" rel="noopener">📍 지도 보기</a><div class="description">남은 기념품·과자 쇼핑! 돈키호테나 역 근처 약국에서 면세 쇼핑. 여권 지참 필수!</div><div class="detail-tags"><span class="dtag dtag-transport">🚃 우에노 → 시부야 (쇼핑) 또는 도쿄역 주변 <a href="https://www.google.com/maps/search/?api=1&query=JR%E4%B8%8A%E9%87%8E%E9%A7%85%20%E5%B1%B1%E6%89%8B%E7%B7%9A%E3%83%9B%E3%83%BC%E3%83%A0%20%20%EB%98%90%EB%8A%94%20%E6%9D%B1%E4%BA%AC%E9%A7%85%20%E5%85%AB%E9%87%8D%E6%B4%B2%E5%8F%A3" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;margin-left:4px">탑승위치</a></span><span class="dtag dtag-hotel">🏨 호텔에서 지하철 20분, 약 6km (우에노 기준)</span><span class="dtag dtag-cost">💰 5,000엔 (예상) (약 44,500원)</span></div></div></div><div class="time-block"><div class="time-marker"><div class="time-dot" style="background:#F9A826"></div><div class="time-label">12:30</div></div><div class="time-content"><div class="place-name">🍜 마지막 식사: 도쿄역 라멘스트리트</div><a class="place-meta-link" href="https://www.google.com/maps/search/?api=1&query=%E4%B8%AD%E8%8F%AF%E8%95%8E%E9%BA%A6%20%E3%81%A8%E3%81%BF%E7%94%B0" target="_blank" rel="noopener">📍 지도 보기</a><div class="description">도쿄역 지하 라멘스트리트에서 마지막 라멘! 토미타의 츠케멘 또는 다른 명점 라멘으로 도쿄 맛집 여행의 피날레.</div><div class="detail-tags"><span class="dtag dtag-transport">🚃 → JR 도쿄역 야에스 지하 1층 <a href="https://www.google.com/maps/search/?api=1&query=%E6%9D%B1%E4%BA%AC%E9%A7%85%20%E5%85%AB%E9%87%8D%E6%B4%B2%E5%8D%97%E5%8F%A3%20B1F%20%E6%9D%B1%E4%BA%AC%E3%83%A9%E3%83%BC%E3%83%A1%E3%83%B3%E3%82%B9%E3%83%88%E3%83%AA%E3%83%BC%E3%83%88" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;margin-left:4px">탑승위치</a></span><span class="dtag dtag-hotel">🏨 호텔에서 지하철 10분, 약 3km</span><span class="dtag dtag-cost">💰 1,200엔 × 2명 = 2,400엔 (약 21,400원)</span></div></div></div><div class="time-block"><div class="time-marker"><div class="time-dot" style="background:#F9A826"></div><div class="time-label">14:00</div></div><div class="time-content"><div class="place-name">도쿄역 → 나리타공항</div><div class="description">나리타 익스프레스(N'EX)로 공항 이동. 도쿄역에서 약 60분. 출발 2시간 전까지 공항 도착 목표!</div><div class="detail-tags"><span class="dtag dtag-transport">🚃 도쿄역 → 나리타 익스프레스 → 나리타공항 (약 60분, 3,250엔) <a href="https://www.google.com/maps/search/?api=1&query=%E6%9D%B1%E4%BA%AC%E9%A7%85%20%E5%9C%B0%E4%B8%8B%E7%B7%8F%E6%AD%A6%E7%B7%9A%E3%83%9B%E3%83%BC%E3%83%A0" target="_blank" rel="noopener" style="color:inherit;text-decoration:underline;margin-left:4px">탑승위치</a></span><span class="dtag dtag-hotel">🏨 호텔에서 지하철 10분, 약 3km (도쿄역까지)</span><span class="dtag dtag-cost">💰 3,250엔 (약 28,900원)</span></div></div></div><div class="time-block"><div class="time-marker"><div class="time-dot" style="background:#F9A826"></div><div class="time-label">15:00</div></div><div class="time-content"><div class="place-name">나리타공항 도착 → 면세점 + 출국</div><div class="description">남은 엔화로 공항 편의점에서 마지막 쇼핑. 면세점 구경 후 출국!</div><div class="detail-tags"><span class="dtag dtag-cost">💰 0엔 (면세 쇼핑 별도) (0원)</span></div></div></div><div class="time-block"><div class="time-marker"><div class="time-dot" style="background:#F9A826"></div><div class="time-label">17:00~18:00</div></div><div class="time-content"><div class="place-name">나리타공항 출발 → 인천공항</div><div class="description">안녕 도쿄, 또 올게요! 비행시간 약 2시간 30분.</div><div class="detail-tags"><span class="dtag dtag-cost">💰 항공권 별도 (-)</span></div></div></div></div></div></div>
+<div class="page" data-page="6"><div class="page-inner"><div class="section"><div class="section-title"><span class="icon">💰</span> 예산 요약 (1인 기준)</div><table class="budget-table"><tr><th>항목</th><th>예상 비용</th><th>비고</th></tr><tr><td>항공</td><td>250,000~400,000원 (LCC 왕복 기준)</td><td>피치항공, 제주항공, 티웨이 등 LCC 기준. 4월은 벚꽃 시즌이라 일찍 예매할수록 저렴!</td></tr><tr><td>숙박</td><td>1인당 106,800~160,200원</td><td></td></tr><tr><td>식비</td><td>약 222,500~311,500원</td><td>맛집 중심이지만 가성비 위주로 선별. 라멘·텐동 등 1,000엔대 식사와 야키니쿠·스시 등 3,000~4,000엔대 식사 섞어서.</td></tr><tr><td>현지 교통</td><td>약 77,700~95,500원</td><td></td></tr><tr><td>입장료/액티비티</td><td>약 49,800~60,500원</td><td></td></tr><tr><td>쇼핑/기념품</td><td>약 44,500~89,000원</td><td></td></tr><tr><td><strong>1인 합계 (가성비)</strong></td><td><strong>약 712,000~890,000원</strong></td><td>항공 포함, 가성비 숙소 기준</td></tr><tr><td><strong>1인 합계 (중급)</strong></td><td><strong>약 979,000~1,335,000원</strong></td><td>항공 포함, 중급 숙소 기준</td></tr><tr><td><strong>커플 합계 (가성비)</strong></td><td><strong>약 1,424,000~1,780,000원 (2인 합계)</strong></td><td></td></tr><tr><td><strong>커플 합계 (중급)</strong></td><td><strong>약 1,958,000~2,670,000원 (2인 합계)</strong></td><td></td></tr></table><div style="margin-top:16px"><div class="section-title" style="font-size:14px"><span class="icon">💡</span> 절약 팁</div><div style="font-size:12.5px;color:var(--text-secondary);padding:4px 0;display:flex;gap:6px"><span style="color:var(--green)">•</span> 항공: 2~3개월 전 LCC 예매 시 15~20만원대 가능</div><div style="font-size:12.5px;color:var(--text-secondary);padding:4px 0;display:flex;gap:6px"><span style="color:var(--green)">•</span> 숙소: 도미인 체인이 가성비+퀄리티 모두 잡음</div><div style="font-size:12.5px;color:var(--text-secondary);padding:4px 0;display:flex;gap:6px"><span style="color:var(--green)">•</span> 교통: Tokyo Subway 72시간 티켓(1,500엔)이 가성비 최고</div><div style="font-size:12.5px;color:var(--text-secondary);padding:4px 0;display:flex;gap:6px"><span style="color:var(--green)">•</span> 식비: 점심은 1,000엔 이하 세트(라멘, 텐동, 규동), 저녁에 좋은 곳 집중</div><div style="font-size:12.5px;color:var(--text-secondary);padding:4px 0;display:flex;gap:6px"><span style="color:var(--green)">•</span> 쇼핑: 돈키호테 면세 + 쿠폰 앱 활용</div><div style="font-size:12.5px;color:var(--text-secondary);padding:4px 0;display:flex;gap:6px"><span style="color:var(--green)">•</span> 음료: 편의점·자판기 활용 (카페보다 1/3 가격)</div></div></div><div class="section"><div class="section-title"><span class="icon">📱</span> 유용한 앱</div><div class="app-grid"><div class="app-card"><div class="app-name">Google Maps</div><div class="app-purpose">길찾기·교통편 검색 (일본 대중교통 경로 매우 정확)</div></div><div class="app-card"><div class="app-name">Tabelog (食べログ)</div><div class="app-purpose">일본 맛집 평점 앱. 3.5 이상이면 맛집 보증.</div></div><div class="app-card"><div class="app-name">Suica 앱 (모바일)</div><div class="app-purpose">iPhone에서 교통카드 충전·사용</div></div><div class="app-card"><div class="app-name">PayPay</div><div class="app-purpose">일본 QR결제 앱 (외국인도 등록 가능, 현금 줄이기 좋음)</div></div><div class="app-card"><div class="app-name">Navitime</div><div class="app-purpose">일본 교통 전문 길찾기 (환승 상세)</div></div></div></div><div class="section"><div class="section-title"><span class="icon">🏨</span> 선택된 호텔</div><div class="hotel-card selected"><span class="hotel-tier tier-premium">4성급 ⭐ 기본 선택</span><div style="font-size:16px;font-weight:700;color:var(--text);margin-top:4px">미츠이 가든 호텔 긴자 프리미어</div><div style="font-size:12px;color:var(--text-tertiary)">三井ガーデンホテル銀座プレミア</div><div style="font-size:13px;color:var(--text-secondary);margin-top:8px;line-height:1.7">📍 긴자/신바시 · 💰 25,000엔/박 (약 222,500원)<br>✨ 최상층 도쿄타워 뷰 · 대욕장 완비 · 긴자 중심부 도보 접근 · 모던 인테리어 · 한국어 대응 스탭<br><em style="color:var(--accent)">💡 긴자 중심부 위치로 츠키지·시부야·아사쿠사·도쿄역 모두 30분 이내 접근. 고층 객실에서 도쿄타워 야경 감상 가능. Booking.com 평점 8.9, 커플 데이트 여행에 최적의 로맨틱한 분위기와 편리한 교통을 겸비.</em></div><div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap"><a class="btn-map btn-map-primary" href="https://www.google.com/maps/search/?api=1&query=%E4%B8%89%E4%BA%95%E3%82%AC%E3%83%BC%E3%83%87%E3%83%B3%E3%83%9B%E3%83%86%E3%83%AB%E9%8A%80%E5%BA%A7%E3%83%97%E3%83%AC%E3%83%9F%E3%82%A2" target="_blank" rel="noopener">📍 Google Maps</a><a class="btn-map btn-map-secondary" href="https://www.booking.com/hotel/jp/mitsui-garden-ginza-premier.html" target="_blank" rel="noopener">🔗 예약</a></div></div></div><div class="footer-section">
+    <div class="disclaimer">⚠️ 이 여행 일정은 AI가 생성한 것입니다. 가격, 영업시간 등은 변동될 수 있으니 방문 전 재확인을 권장합니다. 데이터 소스: LLM 지식 기반</div>
+    <div class="footer-text">Generated by Travel Planner Agent · 2026-03-17</div>
+  </div></div></div>
+    </div>
+
+    <div class="pagination" id="pagination">
+      <div class="dot active" data-page="0"></div><div class="dot" data-page="1"></div><div class="dot" data-page="2"></div><div class="dot" data-page="3"></div><div class="dot" data-page="4"></div><div class="dot" data-page="5"></div><div class="dot" data-page="6"></div>
+      <span class="page-label" id="pageLabel"></span>
+    </div>
+
+    <div class="nav-arrows">
+      <button class="nav-arrow" id="navPrev" aria-label="Previous page">&#8249;</button>
+      <button class="nav-arrow" id="navNext" aria-label="Next page">&#8250;</button>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    
+(function() {
+  // ===== PAGINATION & SWIPE =====
+  var wrapper = document.getElementById('pagesWrapper');
+  var pagination = document.getElementById('pagination');
+  var pageLabel = document.getElementById('pageLabel');
+  var dots = pagination.querySelectorAll('.dot');
+  var pages = wrapper.querySelectorAll('.page');
+  var totalPages = pages.length;
+  var currentPage = 0;
+  var pageNames = ["여행 개요","맛집·숙소","Day 1 (도착일)","Day 2","Day 3","Day 4 (출발일)","예산·팁"];
+
+  function updatePagination() {
+    var scrollLeft = wrapper.scrollLeft;
+    var pageWidth = wrapper.offsetWidth;
+    currentPage = Math.round(scrollLeft / pageWidth);
+    dots.forEach(function(d, i) {
+      d.classList.toggle('active', i === currentPage);
+    });
+    pageLabel.textContent = (currentPage + 1) + ' / ' + totalPages;
+    // Update nav arrows
+    var prev = document.getElementById('navPrev');
+    var next = document.getElementById('navNext');
+    if (prev) prev.disabled = currentPage === 0;
+    if (next) next.disabled = currentPage === totalPages - 1;
+  }
+
+  wrapper.addEventListener('scroll', function() {
+    requestAnimationFrame(updatePagination);
+  });
+
+  function goToPage(idx) {
+    if (idx < 0 || idx >= totalPages) return;
+    pages[idx].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'start' });
+  }
+
+  // Dot click
+  dots.forEach(function(d, i) {
+    d.addEventListener('click', function() { goToPage(i); });
+  });
+
+  // Nav arrows
+  document.getElementById('navPrev').addEventListener('click', function() { goToPage(currentPage - 1); });
+  document.getElementById('navNext').addEventListener('click', function() { goToPage(currentPage + 1); });
+
+  // Keyboard navigation
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); goToPage(currentPage + 1); }
+    if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); goToPage(currentPage - 1); }
+  });
+
+  updatePagination();
+
+  // ===== PLACES FILTER =====
+  window.filterPlaces = function(cat) {
+    var cards = document.querySelectorAll('#placesCards .spot-card');
+    cards.forEach(function(c) {
+      var cc = c.getAttribute('data-cat');
+      c.style.display = (cat === 'all' || cc === cat) ? '' : 'none';
+    });
+    // Update active tab
+    var tabs = document.querySelectorAll('#placesFilter .filter-tab');
+    tabs.forEach(function(t) {
+      t.classList.toggle('active', t.getAttribute('data-filter') === cat);
+    });
+    // Update map markers visibility
+    if (window._placeMarkers) {
+      window._placeMarkers.forEach(function(m) {
+        var mc = m._cat;
+        if (cat === 'all' || mc === cat) {
+          if (!window._placesMap.hasLayer(m)) m.addTo(window._placesMap);
+        } else {
+          window._placesMap.removeLayer(m);
+        }
+      });
+    }
+  };
+
+  // ===== SPOT CARD TOGGLE =====
+  window.toggleSpot = function(el, idx) {
+    var detail = document.getElementById('spotDetail' + idx);
+    if (!detail) return;
+    var isOpen = detail.style.display !== 'none';
+    // Close all
+    document.querySelectorAll('.spot-detail').forEach(function(d) { d.style.display = 'none'; });
+    document.querySelectorAll('.spot-card').forEach(function(c) { c.classList.remove('active'); });
+    if (!isOpen) {
+      detail.style.display = '';
+      el.classList.add('active');
+      el.style.borderColor = 'rgba(108,92,231,0.3)';
+      el.style.boxShadow = '0 4px 20px rgba(108,92,231,0.1)';
+      // Pan map to this spot marker
+      if (window._placeMarkers && window._placeMarkers[idx]) {
+        var m = window._placeMarkers[idx];
+        if (window._placesMap) {
+          window._placesMap.setView(m.getLatLng(), 15);
+          m.openPopup();
+        }
+      }
+    } else {
+      el.style.borderColor = '';
+      el.style.boxShadow = '';
+    }
+  };
+
+  // ===== PLACES MAP =====
+  var placesMapEl = document.getElementById('placesMap');
+  if (placesMapEl && typeof L !== 'undefined') {
+    var mapData = [{"lat":35.6655,"lng":139.7592,"name":"미츠이 가든 호텔 긴자 프리미어","nameLocal":"三井ガーデンホテル銀座プレミア","emoji":"🏨","color":"#6C5CE7","cat":"hotel","isHotel":true,"isSelected":true},{"lat":35.67,"lng":139.768,"name":"도미인 프리미엄 긴자","nameLocal":"ドーミーインPREMIUM銀座","emoji":"🏨","color":"#6C5CE7","cat":"hotel","isHotel":true,"isSelected":false},{"lat":35.6908,"lng":139.7789,"name":"비아인 도쿄 닛폰바시","nameLocal":"ヴィアイン東京日本橋","emoji":"🏨","color":"#6C5CE7","cat":"hotel","isHotel":true,"isSelected":false},{"lat":35.6564,"lng":139.7022,"name":"시부야 스트림 엑셀 호텔 도큐","nameLocal":"渋谷ストリーム エクセルホテル東急","emoji":"🏨","color":"#6C5CE7","cat":"hotel","isHotel":true,"isSelected":false},{"lat":35.6867,"lng":139.7641,"name":"아만 도쿄","nameLocal":"アマン東京","emoji":"🏨","color":"#6C5CE7","cat":"hotel","isHotel":true,"isSelected":false},{"lat":35.6855,"lng":139.6903,"name":"파크 하얏트 도쿄","nameLocal":"パーク ハイアット 東京","emoji":"🏨","color":"#6C5CE7","cat":"hotel","isHotel":true,"isSelected":false},{"lat":35.6467,"lng":139.7103,"name":"아후리 라멘 에비스점","nameLocal":"AFURI 恵比寿","emoji":"🍜","color":"#F9A826","cat":"restaurant","isHotel":false,"isSelected":false},{"lat":35.6654,"lng":139.7707,"name":"츠키지 스시다이","nameLocal":"築地すし大","emoji":"🍣","color":"#E84545","cat":"restaurant","isHotel":false,"isSelected":false},{"lat":35.6607,"lng":139.6983,"name":"이치란 라멘 시부야점","nameLocal":"一蘭 渋谷店","emoji":"🍜","color":"#F9A826","cat":"restaurant","isHotel":false,"isSelected":false},{"lat":35.6717,"lng":139.7649,"name":"긴자 카츠카미","nameLocal":"銀座 かつかみ","emoji":"🍽","color":"#E84545","cat":"restaurant","isHotel":false,"isSelected":false},{"lat":35.644,"lng":139.6989,"name":"모모텐지 나카메구로점","nameLocal":"桃天児 中目黒店","emoji":"🥩","color":"#E84545","cat":"restaurant","isHotel":false,"isSelected":false},{"lat":35.6735,"lng":139.7622,"name":"후쿠요시 야키토리","nameLocal":"ふくよし","emoji":"🍽","color":"#E84545","cat":"restaurant","isHotel":false,"isSelected":false},{"lat":35.6842,"lng":139.7741,"name":"텐동 카네코 한노스케 니혼바시점","nameLocal":"天丼 金子半之助 日本橋本店","emoji":"🍤","color":"#F9A826","cat":"restaurant","isHotel":false,"isSelected":false},{"lat":35.6789,"lng":139.768,"name":"토미타 라멘 (마츠도)","nameLocal":"中華蕎麦 とみ田","emoji":"🍜","color":"#F9A826","cat":"restaurant","isHotel":false,"isSelected":false},{"lat":35.6712,"lng":139.7654,"name":"겐카츠 긴자점","nameLocal":"げんかつ 銀座店","emoji":"🍽","color":"#E84545","cat":"restaurant","isHotel":false,"isSelected":false},{"lat":35.6626,"lng":139.7766,"name":"몬자야키 콘도","nameLocal":"もんじゃ近どう","emoji":"🍽","color":"#E84545","cat":"restaurant","isHotel":false,"isSelected":false},{"lat":35.6488,"lng":139.7001,"name":"사루가쿠 커피","nameLocal":"猿楽珈琲","emoji":"☕","color":"#4A90D9","cat":"restaurant","isHotel":false,"isSelected":false},{"lat":35.6938,"lng":139.6989,"name":"오모이데요코초 (추억의 골목)","nameLocal":"思い出横丁","emoji":"🍽","color":"#E84545","cat":"restaurant","isHotel":false,"isSelected":false},{"lat":35.7148,"lng":139.7967,"name":"센소지 (아사쿠사)","nameLocal":"浅草寺","emoji":"⛩️","color":"#2ECC71","cat":"attraction","isHotel":false,"isSelected":false},{"lat":35.6595,"lng":139.7004,"name":"시부야 스크램블 교차로 & 시부야 스카이","nameLocal":"渋谷スクランブル交差点 & SHIBUYA SKY","emoji":"⛩️","color":"#2ECC71","cat":"attraction","isHotel":false,"isSelected":false},{"lat":35.6764,"lng":139.6993,"name":"메이지진구","nameLocal":"明治神宮","emoji":"⛩️","color":"#2ECC71","cat":"attraction","isHotel":false,"isSelected":false},{"lat":35.6586,"lng":139.7454,"name":"도쿄타워","nameLocal":"東京タワー","emoji":"⛩️","color":"#2ECC71","cat":"attraction","isHotel":false,"isSelected":false},{"lat":35.7146,"lng":139.7732,"name":"우에노공원 & 아메요코","nameLocal":"上野公園 & アメ横","emoji":"⛩️","color":"#2ECC71","cat":"attraction","isHotel":false,"isSelected":false},{"lat":35.6592,"lng":139.7399,"name":"팀랩 보더리스 (아자부다이힐스)","nameLocal":"チームラボボーダレス 麻布台ヒルズ","emoji":"🎨","color":"#7B68EE","cat":"experience","isHotel":false,"isSelected":false},{"lat":35.6654,"lng":139.7707,"name":"츠키지 외시장 먹방투어","nameLocal":"築地場外市場 食べ歩き","emoji":"🎨","color":"#7B68EE","cat":"experience","isHotel":false,"isSelected":false},{"lat":35.6605,"lng":139.6981,"name":"돈키호테 시부야점","nameLocal":"ドン・キホーテ 渋谷本店","emoji":"🛍","color":"#FF69B4","cat":"shopping","isHotel":false,"isSelected":false}];
+    var pmap = L.map('placesMap', { zoomControl: true, attributionControl: false })
+      .setView([35.6655, 139.7592], 13);
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { maxZoom: 19 }).addTo(pmap);
+    window._placesMap = pmap;
+    window._placeMarkers = [];
+
+    mapData.forEach(function(p, i) {
+      var size = p.isSelected ? 36 : (p.isHotel ? 32 : 28);
+      var border = p.isSelected ? '3px solid #fff' : '2px solid rgba(255,255,255,0.4)';
+      var icon = L.divIcon({
+        className: '',
+        html: '<div style="width:'+size+'px;height:'+size+'px;border-radius:50%;background:'+p.color+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:'+(p.isSelected?18:14)+'px;box-shadow:0 2px 10px '+p.color+'66;border:'+border+';transform:translate(-50%,-50%);cursor:pointer;">'+p.emoji+'</div>',
+        iconSize: [0, 0], iconAnchor: [0, 0],
+      });
+      var popup = '<div style="font-family:inherit;min-width:180px"><div style="font-size:14px;font-weight:700;margin-bottom:3px">'+p.emoji+' '+p.name+'</div>'
+        + (p.nameLocal ? '<div style="font-size:11px;color:#888;margin-bottom:6px">'+p.nameLocal+'</div>' : '')
+        + '<a href="https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(p.nameLocal||p.name)+'" target="_blank" rel="noopener" style="color:#6C5CE7;font-size:12px;text-decoration:none">📍 Google Maps에서 보기</a></div>';
+      var marker = L.marker([p.lat, p.lng], { icon: icon })
+        .bindPopup(popup, { className: 'dark-popup', maxWidth: 250 })
+        .addTo(pmap);
+      marker._cat = p.cat;
+      marker.on('click', function() {
+        // Find and expand the corresponding card
+        var card = document.querySelector('.spot-card[data-idx="'+i+'"]');
+        if (card) window.toggleSpot(card, i);
+      });
+      window._placeMarkers.push(marker);
+    });
+
+    // Fit bounds
+    if (mapData.length > 0) {
+      var bounds = mapData.map(function(p) { return [p.lat, p.lng]; });
+      pmap.fitBounds(bounds, { padding: [30, 30] });
+    }
+
+    // Fix map size when page becomes visible
+    var observer = new IntersectionObserver(function(entries) {
+      entries.forEach(function(entry) {
+        if (entry.isIntersecting) pmap.invalidateSize();
+      });
+    }, { threshold: 0.1 });
+    observer.observe(placesMapEl);
+  }
+
+})();
+  </script>
+</body>
+</html>
